@@ -1,5 +1,8 @@
+use std::{collections::HashMap, env};
+
 use axum::{
     extract::{Json, Path, Query},
+    response::Html,
     routing::{get, post},
     Router,
 };
@@ -9,10 +12,14 @@ use log::{debug, info, warn};
 async fn main() {
     env_logger::builder().format_timestamp(None).init();
 
+    dotenv::dotenv().ok();
+
     // build our application with a single route
     let app = Router::new()
         .route("/health", get(health))
-        .route("/github/hook", post(github_webhook));
+        .route("/register", get(register))
+        .route("/github/hook", post(github_webhook))
+        .route("/github/callback", get(github_callback));
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -23,6 +30,16 @@ async fn main() {
 
 async fn health() -> &'static str {
     "health!"
+}
+
+async fn register() -> Html<String> {
+    // TODO maybe move this so we aren't always reading env var
+    let client_id = env::var("CLIENT_ID").expect("Unable to get CLIENT_ID env var");
+
+    Html(format!(
+        r#"<a href="https://github.com/login/oauth/authorize?client_id={}">Register with GitHub</a>"#,
+        client_id
+    ))
 }
 
 #[derive(Debug)]
@@ -55,4 +72,9 @@ async fn github_webhook(Json(payload): Json<serde_json::Value>) {
             warn!("Unhandled action type {}", action);
         },
     }
+}
+
+async fn github_callback(Query(params): Query<HashMap<String, String>>) {
+    let code = params.get("code").expect("code not provided");
+    debug!("registered with github {:?}", code);
 }
