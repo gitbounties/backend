@@ -2,7 +2,7 @@
 default: debug
 
 debug:
-    cargo run
+    RUST_LOG=gitbounties_backend,info cargo run
 
 devsetup:
     cp dev/hooks/* .git/hooks
