@@ -7,14 +7,17 @@ use axum::{
     Router,
 };
 use log::{debug, info, warn};
+use models::Issue;
+use serde_json::json;
 
 mod db;
+mod models;
 
 #[tokio::main]
 async fn main() {
     env_logger::builder().format_timestamp(None).init();
 
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().unwrap();
 
     db::connect("127.0.0.1:8000").await.unwrap();
 
@@ -46,19 +49,10 @@ async fn register() -> Html<String> {
     ))
 }
 
-#[derive(Debug)]
-struct Issue {
-    title: String,
-    body: String,
-    url: String,
-    node_id: String,
-}
-
 async fn github_webhook(Json(payload): Json<serde_json::Value>) {
     // TODO return proper error to sender
     let action: &str = payload["action"].as_str().expect("Malformed webhook");
     info!("github hook called: {}", action);
-
     match action {
         "opened" => {
             let issue_raw: &serde_json::Value = payload.get("issue").expect("No issue field");
@@ -80,5 +74,28 @@ async fn github_webhook(Json(payload): Json<serde_json::Value>) {
 
 async fn github_callback(Query(params): Query<HashMap<String, String>>) {
     let code = params.get("code").expect("code not provided");
+    get_user_access_token(code).await.unwrap();
     debug!("registered with github {:?}", code);
+}
+
+/// Exchange code recieved from github callback for a github access token
+async fn get_user_access_token(code: &str) -> reqwest::Result<()> {
+    /// TODO not sure if making client each request is slow, could make this static (or shared)?
+    let client = reqwest::Client::new();
+
+    let res = client.post("https://github.com/login/oauth/access_token")
+        .body(json!({
+            "client_id": env::var("CLIENT_ID").expect("Could not get CLIENT_ID env var"),
+            "client_secret": env::var("CLIENT_SECRET").expect("Could not get CLIENT_SECRET env var"),
+            "code": code,
+        }).to_string())
+        .send()
+        .await?
+        .text()
+        //.json::<serde_json::Value>()
+        .await?;
+
+    debug!("Recieved access token {res:?}");
+
+    Ok(())
 }
