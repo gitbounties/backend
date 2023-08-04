@@ -16,3 +16,5 @@ pub async fn connect(connection_string: &str) -> surrealdb::Result<()> {
 
     Ok(())
 }
+
+pub async fn user_register() {}
