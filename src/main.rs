@@ -8,11 +8,15 @@ use axum::{
 };
 use log::{debug, info, warn};
 
+mod db;
+
 #[tokio::main]
 async fn main() {
     env_logger::builder().format_timestamp(None).init();
 
     dotenv::dotenv().ok();
+
+    db::connect("127.0.0.1:8000").await.unwrap();
 
     // build our application with a single route
     let app = Router::new()

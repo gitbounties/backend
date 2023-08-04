@@ -19,3 +19,10 @@ Create your own copy of env file and fill out the variables with the secrets
 ```
 cp .env-example .env
 ```
+
+## Running for development
+
+We need an instance of surreal db running. You can run a local test database with.
+```
+just dev_db
+```
