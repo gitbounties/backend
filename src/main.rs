@@ -79,23 +79,31 @@ async fn github_callback(Query(params): Query<HashMap<String, String>>) {
 }
 
 /// Exchange code recieved from github callback for a github access token
-async fn get_user_access_token(code: &str) -> reqwest::Result<()> {
+async fn get_user_access_token(code: &str) -> reqwest::Result<String> {
     /// TODO not sure if making client each request is slow, could make this static (or shared)?
     let client = reqwest::Client::new();
 
-    let res = client.post("https://github.com/login/oauth/access_token")
-        .body(json!({
-            "client_id": env::var("CLIENT_ID").expect("Could not get CLIENT_ID env var"),
-            "client_secret": env::var("CLIENT_SECRET").expect("Could not get CLIENT_SECRET env var"),
-            "code": code,
-        }).to_string())
+    let res = client
+        .post("https://github.com/login/oauth/access_token")
+        .query(&[
+            (
+                "client_id",
+                env::var("CLIENT_ID").expect("Could not get CLIENT_ID env var"),
+            ),
+            (
+                "client_secret",
+                env::var("CLIENT_SECRET").expect("Could not get CLIENT_SECRET env var"),
+            ),
+            ("code", code.into()),
+        ])
         .send()
         .await?
-        .text()
-        //.json::<serde_json::Value>()
+        .json::<serde_json::Value>()
         .await?;
 
-    debug!("Recieved access token {res:?}");
+    let access_token = res["access_token"].as_str().unwrap();
 
-    Ok(())
+    debug!("Recieved access token {access_token}");
+
+    Ok(access_token.into())
 }
