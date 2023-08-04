@@ -17,8 +17,19 @@ use crate::models::Issue;
 
 pub fn router() -> Router {
     Router::new()
+        .route("/github/register", get(github_register))
         .route("/github/hook", post(github_webhook))
         .route("/github/callback", get(github_callback))
+}
+
+async fn github_register() -> Html<String> {
+    // TODO maybe move this so we aren't always reading env var
+    let client_id = env::var("CLIENT_ID").expect("Unable to get CLIENT_ID env var");
+
+    Html(format!(
+        r#"<a href="https://github.com/login/oauth/authorize?client_id={}">Register with GitHub</a>"#,
+        client_id
+    ))
 }
 
 async fn github_webhook(Json(payload): Json<serde_json::Value>) {
@@ -80,5 +91,19 @@ async fn get_user_access_token(code: &str) -> reqwest::Result<String> {
     Ok(access_token.into())
 }
 
+// TODO technically not a route, should move somewhere else?
 /// Grab information from user's github profile
-async fn get_user_profile() {}
+async fn get_user_profile(auth: &str) -> reqwest::Result<()> {
+    let client = reqwest::Client::new();
+    let res = client
+        .get("https://api.github.com/user")
+        .bearer_auth(auth)
+        .send()
+        .await?
+        .json::<serde_json::Value>()
+        .await?;
+
+    debug!("User profile {res:?}");
+
+    Ok(())
+}

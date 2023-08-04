@@ -8,7 +8,15 @@
 
 </div>
 
-## Setting up for developement
+## Prerequisites
+
+Some tools that will be used
+- [just](https://github.com/casey/just): used as command runner
+- [foundry](https://github.com/foundry-rs/foundry): ethereum testing suite
+
+You will also need a metamask account to do local testing of the smart contract
+
+## Setting up for development
 
 Install git hooks for developers:
 ```
@@ -25,4 +33,9 @@ cp .env-example .env
 We need an instance of surreal db running. You can run a local test database with.
 ```
 just dev_db
+```
+
+If doing smart contract development, you can run a local node
+```
+anvil
 ```

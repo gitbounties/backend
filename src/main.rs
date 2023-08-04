@@ -12,6 +12,7 @@ use serde_json::json;
 
 mod api;
 mod db;
+mod ether;
 mod models;
 
 #[tokio::main]
