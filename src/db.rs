@@ -1,20 +1,28 @@
 use log::info;
-use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, Surreal};
+use surrealdb::{
+    engine::remote::ws::{Client, Ws},
+    opt::auth::Root,
+    Surreal,
+};
 
-pub async fn connect(connection_string: &str) -> surrealdb::Result<()> {
+pub type DBConnection = Surreal<Client>;
+
+pub async fn connect(
+    connection_string: &str,
+    username: &str,
+    password: &str,
+    namespace: &str,
+    database: &str,
+) -> surrealdb::Result<DBConnection> {
     let db = Surreal::new::<Ws>(connection_string).await?;
 
-    db.signin(Root {
-        username: "admin",
-        password: "password",
-    })
-    .await?;
+    db.signin(Root { username, password }).await?;
 
-    db.use_ns("test").use_db("test").await?;
+    db.use_ns(namespace).use_db(database).await?;
 
     info!("Successfully connected to database");
 
-    Ok(())
+    Ok(db)
 }
 
 pub async fn user_register() {}

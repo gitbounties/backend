@@ -11,12 +11,12 @@ use axum::{
 use log::{debug, info, warn};
 use serde_json::json;
 
-use crate::models::Issue;
+use crate::{models::Issue, AppState};
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/health", get(health))
-        .merge(github::router())
+        .nest("/github", github::router())
 }
 
 async fn health() -> &'static str {

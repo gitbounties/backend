@@ -1,9 +1,11 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct User {
     /// Username as associated with github (could potenitally decouple from github in future)
     pub username: String,
+    // /// Unique identifier for github account
+    // pub github_id: String,
 }
 
 #[derive(Debug, Serialize)]

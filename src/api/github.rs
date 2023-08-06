@@ -2,26 +2,30 @@
 //!
 //!
 
-use std::{collections::HashMap, env};
+use std::{collections::HashMap, env, sync::Arc};
 
 use axum::{
-    extract::{Json, Path, Query},
+    extract::{Json, Path, Query, State},
     response::Html,
     routing::{get, post, MethodRouter},
     Router,
 };
 use log::{debug, info, warn};
 use serde_json::json;
+use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
-use crate::models::Issue;
+use crate::{
+    db::DBConnection,
+    models::{Issue, User},
+    AppState,
+};
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/github/register", get(github_register))
-        .route("/github/hook", post(github_webhook))
-        .route("/github/callback", get(github_callback))
+        .route("/register", get(github_register))
+        .route("/hook", post(github_webhook))
+        .route("/callback", get(github_callback))
 }
-
 async fn github_register() -> Html<String> {
     // TODO maybe move this so we aren't always reading env var
     let client_id = env::var("CLIENT_ID").expect("Unable to get CLIENT_ID env var");
@@ -55,10 +59,27 @@ async fn github_webhook(Json(payload): Json<serde_json::Value>) {
     }
 }
 
-async fn github_callback(Query(params): Query<HashMap<String, String>>) {
+async fn github_callback(
+    Query(params): Query<HashMap<String, String>>,
+    State(state): State<AppState>,
+) {
     let code = params.get("code").expect("code not provided");
-    get_user_access_token(code).await.unwrap();
+
     debug!("registered with github {:?}", code);
+
+    let access_token = get_user_access_token(code).await.unwrap();
+
+    let profile = get_user_profile(&access_token).await.unwrap();
+
+    // register user if not in db
+    let res: User = state
+        .db_conn
+        .create("Users")
+        .content(User {
+            username: profile["login"].as_str().unwrap().into(),
+        })
+        .await
+        .unwrap();
 }
 
 /// Exchange code recieved from github callback for a github access token
@@ -93,7 +114,7 @@ async fn get_user_access_token(code: &str) -> reqwest::Result<String> {
 
 // TODO technically not a route, should move somewhere else?
 /// Grab information from user's github profile
-async fn get_user_profile(auth: &str) -> reqwest::Result<()> {
+async fn get_user_profile(auth: &str) -> reqwest::Result<serde_json::Value> {
     let client = reqwest::Client::new();
     let res = client
         .get("https://api.github.com/user")
@@ -105,5 +126,5 @@ async fn get_user_profile(auth: &str) -> reqwest::Result<()> {
 
     debug!("User profile {res:?}");
 
-    Ok(())
+    Ok(res)
 }

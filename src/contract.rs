@@ -6,13 +6,6 @@ use ethers::{
     utils::Anvil,
 };
 use log::{error, info};
-// {
-//     contract::{abigen, ContractFactory},
-//     core::utils::Anvil,
-//     middleware::SignerMiddleware,
-//     providers::{Http, Provider},
-//     signers::{LocalWallet, Signer},
-// };
 
 abigen!(Gitbounties, "./abi/Gitbounties.json");
 
@@ -33,10 +26,8 @@ pub async fn deploy() -> anyhow::Result<()> {
 
     // compile project
     let output = project.compile().unwrap();
-    let contract = output
-        .find_first("Gitbounties")
-        .expect("could not find contract")
-        .clone();
+    let contract = output.find_first("Gitbounties").unwrap().clone();
+
     let (abi, bytecode, _) = contract.into_parts();
 
     // init anvil
@@ -56,6 +47,8 @@ pub async fn deploy() -> anyhow::Result<()> {
     let addr = contract.address();
 
     println!("contract address {}", addr);
+
+    let contract = Gitbounties::new(addr, client.clone());
 
     Ok(())
 }
