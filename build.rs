@@ -4,8 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ethers::contract::Abigen;
-use ethers_solc::{CompilerInput, Solc};
+use ethers::{
+    contract::Abigen,
+    solc::{CompilerInput, Solc},
+};
 
 pub fn main() {
     compile_contract(

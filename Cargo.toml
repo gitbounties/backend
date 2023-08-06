@@ -17,7 +17,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 surrealdb = { version = "1.0.0-beta.9" }
 reqwest = { version = "0.11", features = ["json"] }
-ethers = { version = "2.0" }
+ethers = { version = "2.0", features = ["ethers-solc"] }
 
 dotenvy = { version = "0.15" }
 
@@ -26,6 +26,5 @@ env_logger = { version = "0.9" }
 log = { version = "0.4" }
 
 [build-dependencies]
-ethers-solc = { git = "https://github.com/gakonst/ethers-rs" }
-ethers = { version = "2.0" }
+ethers = { version = "2.0", features = ["ethers-solc"] }
 serde_json = { version = "1.0" }

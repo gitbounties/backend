@@ -11,6 +11,7 @@ use models::Issue;
 use serde_json::json;
 
 mod api;
+mod contract;
 mod db;
 mod ether;
 mod models;
