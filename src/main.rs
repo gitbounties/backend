@@ -38,6 +38,7 @@ async fn main() {
         .unwrap();
 
     let reqwest = reqwest::Client::new();
+    // TODO this jwt needs to be refreshed every so often
     let github_jwt = utils::generate_github_jwt();
     let app_state = AppState {
         db_conn,
