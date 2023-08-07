@@ -10,7 +10,7 @@ use axum::{
     routing::{get, post, MethodRouter},
     Router,
 };
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use serde_json::json;
 use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
@@ -89,6 +89,7 @@ async fn get_user_access_token(code: &str) -> reqwest::Result<String> {
 
     let res = client
         .post("https://github.com/login/oauth/access_token")
+        .header("Accept", "application/json")
         .query(&[
             (
                 "client_id",
@@ -101,11 +102,14 @@ async fn get_user_access_token(code: &str) -> reqwest::Result<String> {
             ("code", code.into()),
         ])
         .send()
-        .await?
-        .json::<serde_json::Value>()
-        .await?;
+        .await
+        .unwrap();
 
-    let access_token = res["access_token"].as_str().unwrap();
+    let body = res.json::<serde_json::Value>().await.unwrap();
+
+    info!("res {:?}", body);
+
+    let access_token = body["access_token"].as_str().unwrap();
 
     debug!("Recieved access token {access_token}");
 
@@ -118,13 +122,61 @@ async fn get_user_profile(auth: &str) -> reqwest::Result<serde_json::Value> {
     let client = reqwest::Client::new();
     let res = client
         .get("https://api.github.com/user")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
         .bearer_auth(auth)
         .send()
-        .await?
+        .await
+        .unwrap();
+
+    println!("{:?}", res.text().await.unwrap());
+
+    todo!()
+    /*
+    let body = res
         .json::<serde_json::Value>()
         .await?;
 
     debug!("User profile {res:?}");
 
     Ok(res)
+    */
+}
+
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use serde::{Deserialize, Serialize};
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    iat: usize,
+    exp: usize,
+    iss: String,
+    alg: String,
+}
+/// To access github api as the application, we need to generate a jwt to use with github's api
+fn generate_api_jwt() -> String {
+    use std::time::SystemTime;
+
+    let private_key = std::env::var("CLIENT_ID").unwrap();
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as usize;
+
+    let claims = Claims {
+        iat: now,
+        exp: now + (60 * 10), // TODO expiry currently hardcoded to 10 min
+        iss: std::env::var("CLIENT_ID").unwrap(),
+        alg: "RS256".into(),
+    };
+
+    let header = Header {
+        alg: Algorithm::RS256,
+        ..Default::default()
+    };
+    encode(
+        &header,
+        &claims,
+        &EncodingKey::from_secret(private_key.as_bytes()),
+    )
+    .expect("Failed encoding jwt token")
 }

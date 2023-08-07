@@ -14,4 +14,4 @@ lint:
     cargo clippy -- -W clippy::unwrap_used -W clippy::cargo
 
 dev_db:
-    docker run --rm -p 8000:8000 surrealdb/surrealdb:latest start --log debug --ns test --db test --user admin --pass password memory
+    docker run --rm -p 8000:8000 surrealdb/surrealdb:latest start --log debug --user admin --pass password memory
