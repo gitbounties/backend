@@ -16,10 +16,15 @@ mod contract;
 mod db;
 mod ether;
 mod models;
+mod utils;
 
 #[derive(Clone)]
 pub struct AppState {
     db_conn: DBConnection,
+    /// JWT token used to interact with github REST API
+    github_jwt: String,
+    /// Reqwest client
+    reqwest: reqwest::Client,
 }
 
 #[tokio::main]
@@ -32,7 +37,13 @@ async fn main() {
         .await
         .unwrap();
 
-    let app_state = AppState { db_conn };
+    let reqwest = reqwest::Client::new();
+    let github_jwt = utils::generate_github_jwt();
+    let app_state = AppState {
+        db_conn,
+        github_jwt,
+        reqwest,
+    };
 
     // build our application with a single route
     let app = Router::new().nest("/", api::router()).with_state(app_state);

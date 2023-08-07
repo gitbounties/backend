@@ -67,9 +67,11 @@ async fn github_callback(
 
     debug!("registered with github {:?}", code);
 
-    let access_token = get_user_access_token(code).await.unwrap();
+    let access_token = get_user_access_token(&state.reqwest, code).await.unwrap();
 
-    let profile = get_user_profile(&access_token).await.unwrap();
+    let profile = get_user_profile(&state.reqwest, &access_token)
+        .await
+        .unwrap();
 
     // register user if not in db
     let res: User = state
@@ -83,11 +85,8 @@ async fn github_callback(
 }
 
 /// Exchange code recieved from github callback for a github access token
-async fn get_user_access_token(code: &str) -> reqwest::Result<String> {
-    /// TODO not sure if making client each request is slow, could make this static (or shared)?
-    let client = reqwest::Client::new();
-
-    let res = client
+async fn get_user_access_token(reqwest: &reqwest::Client, code: &str) -> reqwest::Result<String> {
+    let res = reqwest
         .post("https://github.com/login/oauth/access_token")
         .header("Accept", "application/json")
         .query(&[
@@ -118,9 +117,11 @@ async fn get_user_access_token(code: &str) -> reqwest::Result<String> {
 
 // TODO technically not a route, should move somewhere else?
 /// Grab information from user's github profile
-async fn get_user_profile(auth: &str) -> reqwest::Result<serde_json::Value> {
-    let client = reqwest::Client::new();
-    let res = client
+async fn get_user_profile(
+    reqwest: &reqwest::Client,
+    auth: &str,
+) -> reqwest::Result<serde_json::Value> {
+    let res = reqwest
         .get("https://api.github.com/user")
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
@@ -141,42 +142,4 @@ async fn get_user_profile(auth: &str) -> reqwest::Result<serde_json::Value> {
 
     Ok(res)
     */
-}
-
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
-use serde::{Deserialize, Serialize};
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    iat: usize,
-    exp: usize,
-    iss: String,
-    alg: String,
-}
-/// To access github api as the application, we need to generate a jwt to use with github's api
-fn generate_api_jwt() -> String {
-    use std::time::SystemTime;
-
-    let private_key = std::env::var("CLIENT_ID").unwrap();
-    let now = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as usize;
-
-    let claims = Claims {
-        iat: now,
-        exp: now + (60 * 10), // TODO expiry currently hardcoded to 10 min
-        iss: std::env::var("CLIENT_ID").unwrap(),
-        alg: "RS256".into(),
-    };
-
-    let header = Header {
-        alg: Algorithm::RS256,
-        ..Default::default()
-    };
-    encode(
-        &header,
-        &claims,
-        &EncodingKey::from_secret(private_key.as_bytes()),
-    )
-    .expect("Failed encoding jwt token")
 }
