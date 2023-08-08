@@ -26,25 +26,33 @@ pub struct AppState {
     reqwest: reqwest::Client,
 }
 
+impl AppState {
+    pub async fn init() -> AppState {
+        let db_conn = db::connect("127.0.0.1:8000", "admin", "password", "test", "test")
+            .await
+            .unwrap();
+
+        let reqwest = reqwest::Client::new();
+        // TODO this jwt needs to be refreshed every so often
+        let github_jwt = utils::generate_github_jwt();
+        debug!("github jwt {github_jwt}");
+        let app_state = AppState {
+            db_conn,
+            github_jwt,
+            reqwest,
+        };
+
+        app_state
+    }
+}
+
 #[tokio::main]
 async fn main() {
     env_logger::builder().format_timestamp(None).init();
 
     dotenvy::dotenv().unwrap();
 
-    let db_conn = db::connect("127.0.0.1:8000", "admin", "password", "test", "test")
-        .await
-        .unwrap();
-
-    let reqwest = reqwest::Client::new();
-    // TODO this jwt needs to be refreshed every so often
-    let github_jwt = utils::generate_github_jwt();
-    debug!("github jwt {github_jwt}");
-    let app_state = AppState {
-        db_conn,
-        github_jwt,
-        reqwest,
-    };
+    let app_state = AppState::init().await;
 
     // build our application with a single route
     let app = Router::new().nest("/", api::router()).with_state(app_state);

@@ -7,6 +7,7 @@ use axum::{
 use log::debug;
 use serde::Deserialize;
 
+use super::github::get_installation_access_token;
 use crate::{models::Bounty, AppState};
 
 pub fn router() -> Router<AppState> {
@@ -32,49 +33,8 @@ pub async fn create(State(state): State<AppState>, Json(payload): Json<CreateBod
     // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
 
     // get the installation id
-    let res = state
-        .reqwest
-        // TODO not safe to simply do string format with user controlled input, should definitely santized payload first
-        .get(&format!(
-            "https://api.github.com/repos/{}/{}/installation",
-            payload.owner, payload.repo
-        ))
-        // TODO move user agent to common static constant string
-        .header("User-Agent", "GitBounties")
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .bearer_auth(&state.github_jwt)
-        .send()
-        .await
-        .unwrap();
-
-    let body = res.json::<serde_json::Value>().await.unwrap();
-    debug!("body {body}");
-    let installation_id = body["id"].as_u64().expect("Couldn't get installation id");
-
-    // debug!("installation id {installation_id}");
-
-    // get access token of installation
-    let res = state
-        .reqwest
-        .post(&format!(
-            "https://api.github.com/app/installations/{}/access_tokens",
-            installation_id
-        ))
-        .header("User-Agent", "GitBounties")
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .bearer_auth(&state.github_jwt)
-        .send()
-        .await
-        .unwrap();
-
-    let body = res.json::<serde_json::Value>().await.unwrap();
-    let installation_access_token = body["token"]
-        .as_str()
-        .expect("Couldn't get installation access token");
-
-    debug!("installation access token {installation_access_token}");
+    let installation_access_token =
+        get_installation_access_token(&state, &payload.owner, &payload.repo).await;
 
     // fetch info about the issue
     let res = state
