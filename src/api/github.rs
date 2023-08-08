@@ -24,6 +24,10 @@ pub fn router() -> Router<AppState> {
     // // NOTE temp endpoint to get access tokens for testing
     // .route("/access_token", get())
 }
+
+// TODO we don't actually want to use github register.
+// After the app is installed, we should redirect to a sign in page on webapp to link the
+// installation with a given GitBounties account
 async fn github_register() -> Html<String> {
     // TODO maybe move this so we aren't always reading env var
     let client_id = env::var("CLIENT_ID").expect("Unable to get CLIENT_ID env var");
@@ -85,21 +89,46 @@ pub(crate) async fn issue_closed_webhook(state: &AppState) {
 
     // let body = res.json::<serde_json::Value>().await.unwrap();
     let body = res.text().await.unwrap();
-
     // Find the user the closed this issue and transfer them the funds
 
     println!("[webhook] issue closed {body}");
 }
 
+// NOTE we don't actually need the user's access token anymore
 async fn github_callback(
     Query(params): Query<HashMap<String, String>>,
     State(state): State<AppState>,
 ) {
     let code = params.get("code").expect("code not provided");
 
-    debug!("registered with github {:?}", code);
+    debug!("registered with github {:?}", params);
 
     let access_token = get_user_access_token(&state.reqwest, code).await.unwrap();
+
+    // find installations the user has access to
+    let res = state
+        .reqwest
+        // TODO not safe to simply do string format with user controlled input, should definitely santized payload first
+        .get(&format!("https://api.github.com/user/installations",))
+        // TODO move user agent to common static constant string
+        .header("User-Agent", "GitBounties")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .bearer_auth(&access_token)
+        .send()
+        .await
+        .unwrap();
+
+    let body = res.json::<serde_json::Value>().await.unwrap();
+    debug!("user installations {body}");
+
+    let installations = body["installations"]
+        .as_array()
+        .expect("Couldn't get installations field");
+    let installation_ids = installations
+        .iter()
+        .map(|installation| installation["id"].as_u64().unwrap() as usize)
+        .collect::<Vec<_>>();
 
     let profile = get_user_profile(&state.reqwest, &access_token)
         .await
@@ -111,6 +140,7 @@ async fn github_callback(
         .create("Users")
         .content(User {
             username: profile["login"].as_str().unwrap().into(),
+            github_installations: installation_ids,
         })
         .await
         .unwrap();
@@ -155,6 +185,7 @@ async fn get_user_profile(
 ) -> reqwest::Result<serde_json::Value> {
     let res = reqwest
         .get("https://api.github.com/user")
+        .header("User-Agent", "GitBounties")
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
         .bearer_auth(auth)
@@ -162,18 +193,11 @@ async fn get_user_profile(
         .await
         .unwrap();
 
-    println!("{:?}", res.text().await.unwrap());
+    let body = res.json::<serde_json::Value>().await?;
 
-    todo!()
-    /*
-    let body = res
-        .json::<serde_json::Value>()
-        .await?;
+    debug!("User profile {body:?}");
 
-    debug!("User profile {res:?}");
-
-    Ok(res)
-    */
+    Ok(body)
 }
 
 pub async fn get_installation_access_token(state: &AppState, owner: &str, repo: &str) -> String {

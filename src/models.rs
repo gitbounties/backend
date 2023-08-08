@@ -4,6 +4,16 @@ use serde::{Deserialize, Serialize};
 pub struct User {
     /// Username as associated with github (could potenitally decouple from github in future)
     pub username: String,
+
+    /// List of installations the user has permission to manage
+    pub github_installations: Vec<usize>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Issue {
+    pub owner: String,
+    pub repo: String,
+    pub issue_id: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -13,5 +23,5 @@ pub struct Bounty {
     /// Owner is a github user id
     pub owner: String,
     /// github node_id of the original issue
-    pub issue: usize,
+    pub issue: Issue,
 }

@@ -8,7 +8,10 @@ use log::debug;
 use serde::Deserialize;
 
 use super::github::get_installation_access_token;
-use crate::{models::Bounty, AppState};
+use crate::{
+    models::{Bounty, Issue},
+    AppState,
+};
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/", post(create))
@@ -31,6 +34,8 @@ pub async fn create(State(state): State<AppState>, Json(payload): Json<CreateBod
 
     // auth process as referenced here
     // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
+
+    // Find username from github access token
 
     // get the installation id
     let installation_access_token =
@@ -69,7 +74,11 @@ pub async fn create(State(state): State<AppState>, Json(payload): Json<CreateBod
         .content(Bounty {
             reward: payload.reward,
             owner: String::new(), // TODO
-            issue: body["id"].as_u64().unwrap() as usize,
+            issue: Issue {
+                owner: payload.owner,
+                repo: payload.repo,
+                issue_id: body["id"].as_u64().unwrap() as usize,
+            },
         })
         .await
         .unwrap();
