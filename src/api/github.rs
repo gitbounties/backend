@@ -14,11 +14,7 @@ use log::{debug, error, info, warn};
 use serde_json::json;
 use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
-use crate::{
-    db::DBConnection,
-    models::{Issue, User},
-    AppState,
-};
+use crate::{db::DBConnection, models::User, AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -36,22 +32,39 @@ async fn github_register() -> Html<String> {
     ))
 }
 
-async fn github_webhook(Json(payload): Json<serde_json::Value>) {
+async fn github_webhook(State(state): State<AppState>, Json(payload): Json<serde_json::Value>) {
     // TODO return proper error to sender
     let action: &str = payload["action"].as_str().expect("Malformed webhook");
     info!("github hook called: {}", action);
     match action {
         "opened" => {
+            // NOTE we probably don't actually care when a PR was opened
+            // TODO PRs also count as issues, make sure, you can check existence of issue field to
+            // make sure
             let issue_raw: &serde_json::Value = payload.get("issue").expect("No issue field");
 
-            let issue = Issue {
-                title: issue_raw["title"].as_str().unwrap().into(),
-                body: issue_raw["body"].as_str().unwrap().into(),
-                url: issue_raw["html_url"].as_str().unwrap().into(),
-                node_id: issue_raw["node_id"].as_str().unwrap().into(),
-            };
+            debug!("[webhook] issue opened {issue_raw}");
+        },
+        "closed" => {
+            // TODO double check that an issue is being closed
+            let issue_raw: &serde_json::Value = payload.get("issue").expect("No issue field");
+            let issue_url = issue_raw["url"].as_str().expect("No repository url");
 
-            debug!("[webhook] issue opened {:?}", issue);
+            // Check how the issue was closed
+            let res = state
+                .reqwest
+                .get(issue_url)
+                .header("User-Agent", "GitBounties")
+                .header("Accept", "application/vnd.github+json")
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .bearer_auth(&state.github_jwt)
+                .send()
+                .await
+                .unwrap();
+
+            let body = res.json::<serde_json::Value>().await.unwrap();
+
+            debug!("[webhook] issue closed {body}");
         },
         _ => {
             warn!("Unhandled action type {}", action);

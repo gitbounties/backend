@@ -12,11 +12,12 @@ use axum::{
 use log::{debug, info, warn};
 use serde_json::json;
 
-use crate::{models::Issue, AppState};
+use crate::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/health", get(health))
+        .route("/dev", get(dev))
         .nest("/github", github::router())
         .nest("/bounty", bounty::router())
 }
@@ -24,3 +25,6 @@ pub fn router() -> Router<AppState> {
 async fn health() -> &'static str {
     "health!"
 }
+
+/// Temp route to test code
+async fn dev() {}

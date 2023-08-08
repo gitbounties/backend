@@ -8,7 +8,6 @@ use axum::{
 };
 use db::DBConnection;
 use log::{debug, info, warn};
-use models::Issue;
 use serde_json::json;
 
 mod api;
@@ -40,6 +39,7 @@ async fn main() {
     let reqwest = reqwest::Client::new();
     // TODO this jwt needs to be refreshed every so often
     let github_jwt = utils::generate_github_jwt();
+    debug!("github jwt {github_jwt}");
     let app_state = AppState {
         db_conn,
         github_jwt,

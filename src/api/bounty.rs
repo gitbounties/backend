@@ -7,7 +7,7 @@ use axum::{
 use log::debug;
 use serde::Deserialize;
 
-use crate::AppState;
+use crate::{models::Bounty, AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/", post(create))
@@ -16,7 +16,7 @@ pub fn router() -> Router<AppState> {
 #[derive(Debug, Deserialize)]
 pub struct CreateBody {
     /// Value of the reward
-    pub bounty: u64,
+    pub reward: u64,
     pub owner: String,
     pub repo: String,
     pub issue: u64,
@@ -26,7 +26,7 @@ pub struct CreateBody {
 pub async fn create(State(state): State<AppState>, Json(payload): Json<CreateBody>) {
     // NOTE shoud we check that the user is owner of the issue to monetize it?
 
-    debug!("jwt {}", state.github_jwt);
+    //debug!("jwt {}", state.github_jwt);
 
     // auth process as referenced here
     // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
@@ -49,9 +49,10 @@ pub async fn create(State(state): State<AppState>, Json(payload): Json<CreateBod
         .unwrap();
 
     let body = res.json::<serde_json::Value>().await.unwrap();
-    let installation_id = body["id"].as_str().expect("Couldn't get installation id");
+    debug!("body {body}");
+    let installation_id = body["id"].as_u64().expect("Couldn't get installation id");
 
-    debug!("installation id {installation_id}");
+    // debug!("installation id {installation_id}");
 
     // get access token of installation
     let res = state
@@ -98,9 +99,22 @@ pub async fn create(State(state): State<AppState>, Json(payload): Json<CreateBod
 
     let body = res.json::<serde_json::Value>().await.unwrap();
 
-    debug!("issue {}", body);
+    // debug!("issue {}", body);
 
     // Open issue as new bounty
+    // TODO throw warning if already registered
+    let res: Bounty = state
+        .db_conn
+        .create("Bounty")
+        .content(Bounty {
+            reward: payload.reward,
+            owner: String::new(), // TODO
+            issue: body["id"].as_u64().unwrap() as usize,
+        })
+        .await
+        .unwrap();
+
+    // generate smart contract
 
     // Send notification on the original issue to mark it as a bounty
 }
