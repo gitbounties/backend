@@ -18,3 +18,6 @@ db_up:
 
 db_repl:
     surreal sql --conn http://localhost:8000 --user admin --pass password --ns test --db test
+
+redis:
+    docker run --rm -p 6379:6379 redis
