@@ -35,11 +35,11 @@ pub async fn create(State(state): State<AppState>, Json(payload): Json<CreateBod
     // auth process as referenced here
     // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
 
-    // Find username from github access token
-
     // get the installation id
     let installation_access_token =
         get_installation_access_token(&state, &payload.owner, &payload.repo).await;
+
+    // Check if user has permission to manage this installation
 
     // fetch info about the issue
     let res = state

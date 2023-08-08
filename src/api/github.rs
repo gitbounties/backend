@@ -89,6 +89,7 @@ pub(crate) async fn issue_closed_webhook(state: &AppState) {
 
     // let body = res.json::<serde_json::Value>().await.unwrap();
     let body = res.text().await.unwrap();
+
     // Find the user the closed this issue and transfer them the funds
 
     println!("[webhook] issue closed {body}");
