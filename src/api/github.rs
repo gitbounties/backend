@@ -119,15 +119,10 @@ async fn github_callback(
     let username = profile["login"].as_str().unwrap().to_string();
 
     // register user if not in db
-    let mut res = state
-        .db_conn
-        .query("SELECT * FROM Users WHERE username == $username")
-        .bind(("username", &username))
-        .await
-        .unwrap();
+    let res: Option<User> = state.db_conn.select(("Users", &username)).await.unwrap();
 
-    let res: Vec<User> = res.take(0).unwrap();
-    if let Some(user) = res.get(0) {
+    debug!("select res {:?}", res);
+    if let Some(user) = res {
         debug!("Logging in user");
         login_user().await;
     } else {
@@ -167,16 +162,13 @@ async fn register_user(state: &AppState, username: &str, access_token: &str) {
         .map(|installation| installation["id"].as_u64().unwrap() as usize)
         .collect::<Vec<_>>();
 
-    let res = state
+    let res: User = state
         .db_conn
-        .query("INSERT INTO Users [ $new_user ]")
-        .bind((
-            "new_user",
-            User {
-                username: username.to_string(),
-                github_installations: installation_ids,
-            },
-        ))
+        .create(("Users", username))
+        .content(User {
+            username: username.to_string(),
+            github_installations: installation_ids,
+        })
         .await
         .unwrap();
 

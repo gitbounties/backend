@@ -4,7 +4,7 @@ use axum::{
     extract::{Json, Path, Query, State},
     response::Html,
     routing::{get, post},
-    Router,
+    Extension, Router,
 };
 use axum_login::{
     axum_sessions::{async_session::MemoryStore as SessionMemoryStore, SessionLayer},
@@ -82,8 +82,8 @@ async fn main() {
     let auth_layer = AuthLayer::new(user_store, &secret);
 
     let app = Router::new()
-        // .route("/protected", get(protected))
-        // .route_layer(RequireAuthorizationLayer::<String, AuthUser>::login())
+        .route("/protected", get(protected))
+        .route_layer(RequireAuthorizationLayer::<String, AuthUser>::login())
         .nest("/", api::router())
         .with_state(app_state)
         .layer(auth_layer)
@@ -96,4 +96,6 @@ async fn main() {
         .unwrap();
 }
 
-async fn protected() {}
+async fn protected(Extension(user): Extension<AuthUser>) {
+    debug!("protected route with {}", user.id);
+}
