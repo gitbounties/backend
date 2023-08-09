@@ -6,16 +6,18 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use axum_session::{SessionConfig, SessionLayer, SessionStore};
-use axum_session_auth::{
-    AuthConfig, AuthSessionLayer, Authentication, SessionNullPool, SessionSqlitePool,
+use axum_login::{
+    axum_sessions::{async_session::MemoryStore as SessionMemoryStore, SessionLayer},
+    memory_store::MemoryStore as AuthMemoryStore,
+    secrecy::SecretVec,
+    AuthLayer, RequireAuthorizationLayer,
 };
 use db::DBConnection;
 use log::{debug, info, warn};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use session_auth::{AuthUser, MyAuthSessionLayer, NullPool};
-use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
+use session_auth::AuthUser;
 
 mod api;
 mod contract;
@@ -63,26 +65,29 @@ async fn main() {
 
     let app_state = AppState::init().await;
 
-    let pool = SqlitePoolOptions::new()
-        .connect("sqlite:auth.db")
-        .await
-        .expect("Could not make pool.");
+    // let pool = SqlitePoolOptions::new()
+    //     .connect("sqlite:auth.db")
+    //     .await
+    //     .expect("Could not make pool.");
 
-    let session_config = SessionConfig::default().with_table_name("axum_sessions");
-    let session_store =
-        SessionStore::<SessionSqlitePool>::new(Some(pool.clone().into()), session_config)
-            .await
-            .unwrap();
-    let auth_config = AuthConfig::<String>::default();
+    let secret = rand::thread_rng().gen::<[u8; 64]>();
 
-    // build our application with a single route
-    // let nullpool = Arc::new(Option::None);
+    let session_store = SessionMemoryStore::new();
+    let session_layer = SessionLayer::new(session_store, &secret).with_secure(false);
+
+    use tokio::sync::RwLock;
+    let store: Arc<RwLock<HashMap<String, AuthUser>>> = Arc::new(RwLock::new(HashMap::default()));
+
+    let user_store = AuthMemoryStore::new(&store);
+    let auth_layer = AuthLayer::new(user_store, &secret);
 
     let app = Router::new()
+        // .route("/protected", get(protected))
+        // .route_layer(RequireAuthorizationLayer::<String, AuthUser>::login())
         .nest("/", api::router())
         .with_state(app_state)
-        .layer(SessionLayer::new(session_store))
-        .layer(MyAuthSessionLayer::new(Some(pool)).with_config(auth_config));
+        .layer(auth_layer)
+        .layer(session_layer);
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
@@ -90,3 +95,5 @@ async fn main() {
         .await
         .unwrap();
 }
+
+async fn protected() {}

@@ -1,16 +1,11 @@
 use std::sync::Arc;
 
-use axum_session::SessionNullPool;
-use axum_session_auth::{
-    AuthSession, AuthSessionLayer, Authentication, HasPermission, SessionSqlitePool,
-};
+use axum_login::{memory_store::MemoryStore as AuthMemoryStore, secrecy::SecretVec};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 
-pub type MyAuthSessionLayer = AuthSessionLayer<AuthUser, String, SessionSqlitePool, SqlitePool>;
-pub type MyAuthSession = AuthSession<AuthUser, String, SessionSqlitePool, SqlitePool>;
-pub type NullPool = Arc<Option<()>>;
+pub type AuthContext =
+    axum_login::extractors::AuthContext<usize, AuthUser, AuthMemoryStore<usize, AuthUser>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthUser {
@@ -18,32 +13,13 @@ pub struct AuthUser {
     // pub username: String,
 }
 
-#[axum::async_trait]
-impl Authentication<AuthUser, String, SqlitePool> for AuthUser {
-    // This is ran when the user has logged in and has not yet been Cached in the system.
-    // Once ran it will load and cache the user.
-    async fn load_user(userid: String, _pool: Option<&SqlitePool>) -> anyhow::Result<AuthUser> {
-        Ok(AuthUser { id: userid })
+impl axum_login::AuthUser<String> for AuthUser {
+    fn get_id(&self) -> String {
+        self.id.clone()
     }
 
-    // This function is used internally to deturmine if they are logged in or not.
-    fn is_authenticated(&self) -> bool {
-        true
-    }
-
-    fn is_active(&self) -> bool {
-        true
-    }
-
-    fn is_anonymous(&self) -> bool {
-        false
-    }
-}
-
-#[axum::async_trait]
-impl HasPermission<SqlitePool> for AuthUser {
-    async fn has(&self, perm: &str, _pool: &Option<&SqlitePool>) -> bool {
-        true
+    fn get_password_hash(&self) -> SecretVec<u8> {
+        SecretVec::new("password".clone().into())
     }
 }
 

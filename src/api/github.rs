@@ -14,7 +14,7 @@ use log::{debug, error, info, warn};
 use serde_json::json;
 use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
-use crate::{db::DBConnection, models::User, session_auth::MyAuthSession, AppState};
+use crate::{db::DBConnection, models::User, AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new()

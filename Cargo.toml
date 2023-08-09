@@ -12,15 +12,13 @@ build = "build.rs"
 
 [dependencies]
 axum = { version = "0.6", features = ["query"] }
-axum_session = { version = "0.3", features = [ "redis-db", "sqlite-rustls" ] }
-axum_session_auth = { version = "0.3", features = [ "redis-db", "sqlite-rustls" ] }
+axum-login = { version = "0.5" }
 tokio = { version = "1.0", default-features = false, features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0" }
 surrealdb = { version = "1.0.0-beta.9" }
-sqlx = { version = "0.7", features = ["sqlite"] }
 reqwest = { version = "0.11", features = ["json"] }
-ethers = { version = "2.0", default-features = false, features = ["ethers-solc"] }
+# ethers = { version = "2.0", default-features = false, features = ["ethers-solc"] }
 jsonwebtoken = { version = "8" }
 scrypt = { version = "0.11" }
 
@@ -29,6 +27,7 @@ dotenvy = { version = "0.15" }
 anyhow = { version = "1" }
 env_logger = { version = "0.9" }
 log = { version = "0.4" }
+rand = { version = "0.8", features = ["min_const_gen"] }
 
 [build-dependencies]
 ethers = { version = "2.0", default-features = false, features = ["ethers-solc"] }

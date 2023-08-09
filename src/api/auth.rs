@@ -7,10 +7,7 @@ use axum::{
 use log::debug;
 use serde::Deserialize;
 
-use crate::{
-    session_auth::{MyAuthSession, MyAuthSessionLayer},
-    AppState,
-};
+use crate::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()

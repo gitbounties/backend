@@ -1,5 +1,6 @@
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
+/*
 use ethers::{
     prelude::*,
     solc::{Artifact, Project, ProjectPathsConfig},
@@ -73,3 +74,4 @@ mod tests {
         deploy().await.unwrap();
     }
 }
+*/

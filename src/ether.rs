@@ -1,4 +1,5 @@
 //! Interface with blockchain
+/*
 
 use ethers::prelude::*;
 
@@ -15,3 +16,4 @@ async fn setup() -> anyhow::Result<()> {
 
     Ok(())
 }
+*/
