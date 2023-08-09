@@ -10,11 +10,17 @@ use axum::{
     routing::{get, post, MethodRouter},
     Router,
 };
+use axum_login::{axum_sessions::async_session::MemoryStore, extractors::AuthContext};
 use log::{debug, error, info, warn};
 use serde_json::json;
 use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
-use crate::{db::DBConnection, models::User, AppState};
+use crate::{
+    db::DBConnection,
+    models::User,
+    session_auth::{AuthUser, MyAuthContext},
+    AppState,
+};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -97,7 +103,7 @@ pub(crate) async fn issue_closed_webhook(state: &AppState) {
 
 async fn github_callback(
     Query(params): Query<HashMap<String, String>>,
-    // auth: MyAuthSession,
+    mut auth: MyAuthContext,
     State(state): State<AppState>,
 ) {
     let code = params.get("code").expect("code not provided");
@@ -128,6 +134,11 @@ async fn github_callback(
         debug!("Registering new user");
         register_user(&state, &username, &access_token).await;
     }
+    auth.login(&AuthUser {
+        id: String::from("TEMP_ID"),
+    })
+    .await
+    .unwrap();
 }
 
 async fn register_user(state: &AppState, username: &str, access_token: &str) {

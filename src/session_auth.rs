@@ -4,8 +4,8 @@ use axum_login::{memory_store::MemoryStore as AuthMemoryStore, secrecy::SecretVe
 use log::debug;
 use serde::{Deserialize, Serialize};
 
-pub type AuthContext =
-    axum_login::extractors::AuthContext<usize, AuthUser, AuthMemoryStore<usize, AuthUser>>;
+pub type MyAuthContext =
+    axum_login::extractors::AuthContext<String, AuthUser, AuthMemoryStore<String, AuthUser>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthUser {
