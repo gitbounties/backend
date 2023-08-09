@@ -1,43 +1,49 @@
 use std::sync::Arc;
 
 use axum_session::SessionNullPool;
-use axum_session_auth::{AuthSession, AuthSessionLayer, Authentication};
+use axum_session_auth::{
+    AuthSession, AuthSessionLayer, Authentication, HasPermission, SessionSqlitePool,
+};
 use log::debug;
 use serde::{Deserialize, Serialize};
+use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 
-pub type MyAuthSessionLayer = AuthSessionLayer<AuthUser, i64, SessionNullPool, NullPool>;
-pub type MyAuthSession = AuthSession<AuthUser, i64, SessionNullPool, NullPool>;
+pub type MyAuthSessionLayer = AuthSessionLayer<AuthUser, String, SessionSqlitePool, SqlitePool>;
+pub type MyAuthSession = AuthSession<AuthUser, String, SessionSqlitePool, SqlitePool>;
 pub type NullPool = Arc<Option<()>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthUser {
-    pub id: i64,
-    pub anonymous: bool,
+    pub id: String,
     // pub username: String,
 }
 
 #[axum::async_trait]
-impl Authentication<AuthUser, i64, NullPool> for AuthUser {
+impl Authentication<AuthUser, String, SqlitePool> for AuthUser {
     // This is ran when the user has logged in and has not yet been Cached in the system.
     // Once ran it will load and cache the user.
-    async fn load_user(userid: i64, _pool: Option<&NullPool>) -> anyhow::Result<AuthUser> {
-        Ok(AuthUser {
-            id: userid,
-            anonymous: true,
-        })
+    async fn load_user(userid: String, _pool: Option<&SqlitePool>) -> anyhow::Result<AuthUser> {
+        Ok(AuthUser { id: userid })
     }
 
     // This function is used internally to deturmine if they are logged in or not.
     fn is_authenticated(&self) -> bool {
-        !self.anonymous
+        true
     }
 
     fn is_active(&self) -> bool {
-        !self.anonymous
+        true
     }
 
     fn is_anonymous(&self) -> bool {
-        self.anonymous
+        false
+    }
+}
+
+#[axum::async_trait]
+impl HasPermission<SqlitePool> for AuthUser {
+    async fn has(&self, perm: &str, _pool: &Option<&SqlitePool>) -> bool {
+        true
     }
 }
 

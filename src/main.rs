@@ -7,12 +7,15 @@ use axum::{
     Router,
 };
 use axum_session::{SessionConfig, SessionLayer, SessionStore};
-use axum_session_auth::{AuthSessionLayer, Authentication, SessionNullPool};
+use axum_session_auth::{
+    AuthConfig, AuthSessionLayer, Authentication, SessionNullPool, SessionSqlitePool,
+};
 use db::DBConnection;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use session_auth::{AuthUser, MyAuthSessionLayer, NullPool};
+use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 
 mod api;
 mod contract;
@@ -60,17 +63,26 @@ async fn main() {
 
     let app_state = AppState::init().await;
 
-    let session_config = SessionConfig::default();
-    let session_store = SessionStore::<SessionNullPool>::new(None, session_config)
+    let pool = SqlitePoolOptions::new()
+        .connect("sqlite:auth.db")
         .await
-        .unwrap();
+        .expect("Could not make pool.");
+
+    let session_config = SessionConfig::default().with_table_name("axum_sessions");
+    let session_store =
+        SessionStore::<SessionSqlitePool>::new(Some(pool.clone().into()), session_config)
+            .await
+            .unwrap();
+    let auth_config = AuthConfig::<String>::default();
 
     // build our application with a single route
     // let nullpool = Arc::new(Option::None);
 
-    let app = Router::new().nest("/", api::router()).with_state(app_state);
-    // .layer(SessionLayer::new(session_store))
-    // .layer(MyAuthSessionLayer::new(Some(nullpool)));
+    let app = Router::new()
+        .nest("/", api::router())
+        .with_state(app_state)
+        .layer(SessionLayer::new(session_store))
+        .layer(MyAuthSessionLayer::new(Some(pool)).with_config(auth_config));
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())

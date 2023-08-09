@@ -14,7 +14,7 @@ use log::{debug, error, info, warn};
 use serde_json::json;
 use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
-use crate::{db::DBConnection, models::User, AppState};
+use crate::{db::DBConnection, models::User, session_auth::MyAuthSession, AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -97,6 +97,7 @@ pub(crate) async fn issue_closed_webhook(state: &AppState) {
 
 async fn github_callback(
     Query(params): Query<HashMap<String, String>>,
+    // auth: MyAuthSession,
     State(state): State<AppState>,
 ) {
     let code = params.get("code").expect("code not provided");
@@ -155,15 +156,20 @@ async fn register_user(state: &AppState, username: &str, access_token: &str) {
         .map(|installation| installation["id"].as_u64().unwrap() as usize)
         .collect::<Vec<_>>();
 
-    let res: User = state
+    let res = state
         .db_conn
-        .create("Users")
-        .content(User {
-            username: username.to_string(),
-            github_installations: installation_ids,
-        })
+        .query("INSERT INTO Users [ $new_user ]")
+        .bind((
+            "new_user",
+            User {
+                username: username.to_string(),
+                github_installations: installation_ids,
+            },
+        ))
         .await
         .unwrap();
+
+    debug!("registered user res {res:?}");
 }
 
 async fn login_user() {}
