@@ -66,13 +66,11 @@ async fn main() {
         .unwrap();
 
     // build our application with a single route
-    let nullpool = Arc::new(Option::None);
+    // let nullpool = Arc::new(Option::None);
 
-    let app = Router::new()
-        .nest("/", api::router())
-        .with_state(app_state)
-        .layer(SessionLayer::new(session_store))
-        .layer(MyAuthSessionLayer::new(Some(nullpool)));
+    let app = Router::new().nest("/", api::router()).with_state(app_state);
+    // .layer(SessionLayer::new(session_store))
+    // .layer(MyAuthSessionLayer::new(Some(nullpool)));
 
     // run it with hyper on localhost:3000
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())

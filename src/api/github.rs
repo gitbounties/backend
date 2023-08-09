@@ -95,7 +95,6 @@ pub(crate) async fn issue_closed_webhook(state: &AppState) {
     println!("[webhook] issue closed {body}");
 }
 
-// NOTE we don't actually need the user's access token anymore
 async fn github_callback(
     Query(params): Query<HashMap<String, String>>,
     State(state): State<AppState>,
@@ -113,14 +112,21 @@ async fn github_callback(
     let username = profile["login"].as_str().unwrap().to_string();
 
     // register user if not in db
-    let groups = state
+    let mut res = state
         .db_conn
         .query("SELECT * FROM Users WHERE username == $username")
         .bind(("username", &username))
         .await
         .unwrap();
 
-    debug!("groups {groups:?}");
+    let res: Vec<User> = res.take(0).unwrap();
+    if let Some(user) = res.get(0) {
+        debug!("Logging in user");
+        login_user().await;
+    } else {
+        debug!("Registering new user");
+        register_user(&state, &username, &access_token).await;
+    }
 }
 
 async fn register_user(state: &AppState, username: &str, access_token: &str) {
@@ -272,5 +278,22 @@ mod tests {
         dotenvy::dotenv().unwrap();
         let app_state = AppState::init().await;
         issue_closed_webhook(&app_state).await;
+    }
+
+    /// TEMP: Testing surreal select statements in rust
+    #[tokio::test]
+    async fn test_select_user() {
+        dotenvy::dotenv().unwrap();
+        let app_state = AppState::init().await;
+
+        let username = "bill";
+        let res = app_state
+            .db_conn
+            .query("SELECT * FROM Users WHERE username == $username")
+            .bind(("username", &username))
+            .await
+            .unwrap();
+
+        println!("res {res:?}");
     }
 }
