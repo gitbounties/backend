@@ -5,6 +5,8 @@ pub struct User {
     /// Username as associated with github (could potenitally decouple from github in future)
     pub username: String,
 
+    // /// Hashed password
+    // pub hashed_pass: String,
     /// List of installations the user has permission to manage
     pub github_installations: Vec<usize>,
 }

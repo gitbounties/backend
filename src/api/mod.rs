@@ -1,3 +1,4 @@
+mod auth;
 mod bounty;
 mod github;
 
@@ -20,6 +21,7 @@ pub fn router() -> Router<AppState> {
         .route("/dev", get(dev))
         .nest("/github", github::router())
         .nest("/bounty", bounty::router())
+        .nest("/auth", auth::router())
 }
 
 async fn health() -> &'static str {

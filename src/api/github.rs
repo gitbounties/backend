@@ -102,10 +102,28 @@ async fn github_callback(
 ) {
     let code = params.get("code").expect("code not provided");
 
-    debug!("registered with github {:?}", params);
+    debug!("auth with github {:?}", params);
 
     let access_token = get_user_access_token(&state.reqwest, code).await.unwrap();
 
+    let profile = get_user_profile(&state.reqwest, &access_token)
+        .await
+        .unwrap();
+
+    let username = profile["login"].as_str().unwrap().to_string();
+
+    // register user if not in db
+    let groups = state
+        .db_conn
+        .query("SELECT * FROM Users WHERE username == $username")
+        .bind(("username", &username))
+        .await
+        .unwrap();
+
+    debug!("groups {groups:?}");
+}
+
+async fn register_user(state: &AppState, username: &str, access_token: &str) {
     // find installations the user has access to
     let res = state
         .reqwest
@@ -131,21 +149,18 @@ async fn github_callback(
         .map(|installation| installation["id"].as_u64().unwrap() as usize)
         .collect::<Vec<_>>();
 
-    let profile = get_user_profile(&state.reqwest, &access_token)
-        .await
-        .unwrap();
-
-    // register user if not in db
     let res: User = state
         .db_conn
         .create("Users")
         .content(User {
-            username: profile["login"].as_str().unwrap().into(),
+            username: username.to_string(),
             github_installations: installation_ids,
         })
         .await
         .unwrap();
 }
+
+async fn login_user() {}
 
 /// Exchange code recieved from github callback for a github access token
 async fn get_user_access_token(reqwest: &reqwest::Client, code: &str) -> reqwest::Result<String> {
