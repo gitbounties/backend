@@ -18,6 +18,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use session_auth::AuthUser;
+use tower_http::cors::CorsLayer;
 
 mod api;
 mod contract;
@@ -86,11 +87,12 @@ async fn main() {
         .route_layer(RequireAuthorizationLayer::<String, AuthUser>::login())
         .nest("/", api::router())
         .with_state(app_state)
+        .layer(CorsLayer::permissive())
         .layer(auth_layer)
         .layer(session_layer);
 
     // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&"0.0.0.0:3001".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();

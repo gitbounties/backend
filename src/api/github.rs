@@ -12,6 +12,7 @@ use axum::{
 };
 use axum_login::{axum_sessions::async_session::MemoryStore, extractors::AuthContext};
 use log::{debug, error, info, warn};
+use serde::Deserialize;
 use serde_json::json;
 use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
@@ -25,6 +26,7 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/register", get(github_register))
+        .route("/dummy/login", post(dummy_login))
         .route("/hook", post(github_webhook))
         .route("/callback", get(github_callback))
     // // NOTE temp endpoint to get access tokens for testing
@@ -131,6 +133,19 @@ async fn github_callback(
     }
     auth.login(&AuthUser {
         id: String::from(&username),
+    })
+    .await
+    .unwrap();
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DummyLoginBody {
+    pub username: String,
+}
+/// Login system used for testing
+async fn dummy_login(mut auth: MyAuthContext, Json(payload): Json<DummyLoginBody>) {
+    auth.login(&AuthUser {
+        id: String::from(payload.username),
     })
     .await
     .unwrap();
