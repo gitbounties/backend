@@ -2,7 +2,7 @@ use axum::{
     extract::{Json, Path, Query, State},
     response::Html,
     routing::{get, post},
-    Router,
+    Extension, Router,
 };
 use log::debug;
 use serde::Deserialize;
@@ -10,11 +10,14 @@ use serde::Deserialize;
 use super::github::get_installation_access_token;
 use crate::{
     models::{Bounty, Issue},
+    session_auth::{AuthUser, MyRequireAuthorizationLayer},
     AppState,
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/", post(create))
+    Router::new()
+        .route("/", post(create))
+        .route_layer(MyRequireAuthorizationLayer::login())
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,9 +30,14 @@ pub struct CreateBody {
 }
 
 /// Create a new issue given URL
-pub async fn create(State(state): State<AppState>, Json(payload): Json<CreateBody>) {
+pub async fn create(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Json(payload): Json<CreateBody>,
+) {
     // NOTE shoud we check that the user is owner of the issue to monetize it?
 
+    debug!("user info {}", user.id);
     //debug!("jwt {}", state.github_jwt);
 
     // auth process as referenced here

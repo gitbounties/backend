@@ -130,7 +130,7 @@ async fn github_callback(
         register_user(&state, &username, &access_token).await;
     }
     auth.login(&AuthUser {
-        id: String::from("TEMP_ID"),
+        id: String::from(&username),
     })
     .await
     .unwrap();

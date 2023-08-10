@@ -1,11 +1,15 @@
 use std::sync::Arc;
 
-use axum_login::{memory_store::MemoryStore as AuthMemoryStore, secrecy::SecretVec};
+use axum_login::{
+    memory_store::MemoryStore as AuthMemoryStore, secrecy::SecretVec, RequireAuthorizationLayer,
+};
 use log::debug;
 use serde::{Deserialize, Serialize};
 
 pub type MyAuthContext =
     axum_login::extractors::AuthContext<String, AuthUser, AuthMemoryStore<String, AuthUser>>;
+
+pub type MyRequireAuthorizationLayer = RequireAuthorizationLayer<String, AuthUser>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthUser {
