@@ -27,6 +27,7 @@ mod api;
 mod contract;
 mod db;
 mod ether;
+mod middleware;
 mod models;
 mod redis;
 mod session_auth;
@@ -46,6 +47,8 @@ impl AppState {
         let db_conn = db::connect("127.0.0.1:8000", "admin", "password", "test", "test")
             .await
             .unwrap();
+
+        db::migrate(&db_conn).await;
 
         let reqwest = reqwest::Client::new();
         // TODO this jwt needs to be refreshed every so often

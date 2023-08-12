@@ -26,6 +26,10 @@ pub fn router() -> Router<AppState> {
 pub struct CreateBody {
     /// Value of the reward
     pub reward: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IssueQuery {
     pub owner: String,
     pub repo: String,
     pub issue: u64,
@@ -34,6 +38,7 @@ pub struct CreateBody {
 /// Create a new issue given URL
 pub async fn create(
     State(state): State<AppState>,
+    query: Query<IssueQuery>,
     Extension(auth_user): Extension<AuthUser>,
     Json(payload): Json<CreateBody>,
 ) -> (StatusCode, String) {
@@ -46,7 +51,7 @@ pub async fn create(
 
     // get the installation id
     let installation_id =
-        if let Some(id) = get_installation(&state, &payload.owner, &payload.repo).await {
+        if let Some(id) = get_installation(&state, &query.owner, &query.repo).await {
             id
         } else {
             return (StatusCode::NOT_FOUND, "Invalid issue".into());
@@ -59,6 +64,11 @@ pub async fn create(
         .select(("Users", &auth_user.id))
         .await
         .expect("User should exist in database");
+
+    debug!(
+        "checking if {} installations {:?}",
+        installation_id, user_data.github_installations
+    );
 
     if !user_data
         .github_installations
@@ -75,7 +85,7 @@ pub async fn create(
         .reqwest
         .get(&format!(
             "https://api.github.com/repos/{}/{}/issues/{}",
-            payload.owner, payload.repo, payload.issue
+            query.owner, query.repo, query.issue
         ))
         .header("User-Agent", "GitBounties")
         .header("Accept", "application/vnd.github+json")
@@ -103,10 +113,9 @@ pub async fn create(
         .content(Bounty {
             user: auth_user.id,
             reward: payload.reward,
-            owner: String::new(), // TODO
             issue: Issue {
-                owner: payload.owner,
-                repo: payload.repo,
+                owner: query.owner.clone(),
+                repo: query.repo.clone(),
                 issue_id: body["id"].as_u64().unwrap() as usize,
             },
         })
@@ -116,6 +125,25 @@ pub async fn create(
     // generate smart contract
 
     // Send notification on the original issue to mark it as a bounty
+
+    (StatusCode::OK, "Ok".into())
+}
+
+/// Get all created bounties for user
+pub async fn list(
+    State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> (StatusCode, String) {
+    let mut res = state
+        .db_conn
+        .query("SELECT * FROM Bounty WHERE user == $user")
+        .bind(("user", auth_user.id))
+        .await
+        .unwrap();
+
+    let bounties: Vec<Bounty> = res.take(0).unwrap();
+
+    debug!("user bounties {:?}", bounties);
 
     (StatusCode::OK, "Ok".into())
 }

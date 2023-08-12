@@ -1,6 +1,6 @@
-mod auth;
-mod bounty;
-mod github;
+pub mod auth;
+pub mod bounty;
+pub mod github;
 
 use std::env;
 

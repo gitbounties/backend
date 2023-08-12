@@ -24,8 +24,6 @@ pub struct Bounty {
     pub user: String,
     /// Compensantion of the reward
     pub reward: u64,
-    /// Owner is a github user id
-    pub owner: String,
     /// github node_id of the original issue
     pub issue: Issue,
 }

@@ -5,6 +5,8 @@ use surrealdb::{
     Surreal,
 };
 
+use crate::models::User;
+
 pub type DBConnection = Surreal<Client>;
 
 pub async fn connect(
@@ -26,3 +28,20 @@ pub async fn connect(
 }
 
 pub async fn user_register() {}
+
+/// Initialize database
+pub async fn migrate(db_conn: &DBConnection) {
+    // initalize with some dummy data
+
+    let username = "pinosaur";
+    let installations: Vec<usize> = vec![40304727];
+
+    // TODO lazy way to handle CREATE IF NOT EXIST: just ignore the error
+    let res: Result<User, surrealdb::Error> = db_conn
+        .create(("Users", username))
+        .content(User {
+            username: username.to_string(),
+            github_installations: installations,
+        })
+        .await;
+}
