@@ -63,11 +63,11 @@ impl AppState {
 
 #[tokio::main]
 async fn main() {
-    //env_logger::builder().format_timestamp(None).init();
+    env_logger::builder().format_timestamp(None).init();
 
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
+    // tracing_subscriber::fmt()
+    //     .with_max_level(tracing::Level::DEBUG)
+    //     .init();
 
     dotenvy::dotenv().unwrap();
 

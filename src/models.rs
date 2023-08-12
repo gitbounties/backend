@@ -20,6 +20,8 @@ pub struct Issue {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Bounty {
+    /// The user that owns this bounty
+    pub user: String,
     /// Compensantion of the reward
     pub reward: u64,
     /// Owner is a github user id

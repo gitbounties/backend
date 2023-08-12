@@ -73,7 +73,8 @@ pub(crate) async fn issue_closed_webhook(state: &AppState) {
     let owner = "gitbounties";
     let repo = "sample_repo";
     let issue_id = 3;
-    let installation_access_token = get_installation_access_token(&state, &owner, &repo).await;
+    let installation_id = get_installation(&state, &owner, &repo).await.unwrap();
+    let installation_access_token = get_installation_access_token(&state, installation_id).await;
 
     // TODO Double check that an issue (not PR) is being closed
 
@@ -247,7 +248,7 @@ async fn get_user_profile(
     Ok(body)
 }
 
-pub async fn get_installation_access_token(state: &AppState, owner: &str, repo: &str) -> String {
+pub async fn get_installation(state: &AppState, owner: &str, repo: &str) -> Option<u64> {
     let res = state
         .reqwest
         // TODO not safe to simply do string format with user controlled input, should definitely santized payload first
@@ -263,12 +264,20 @@ pub async fn get_installation_access_token(state: &AppState, owner: &str, repo: 
         .await
         .unwrap();
 
+    if !res.status().is_success() {
+        return None;
+    }
+
     let body = res.json::<serde_json::Value>().await.unwrap();
     debug!("body {body}");
     let installation_id = body["id"].as_u64().expect("Couldn't get installation id");
 
     // debug!("installation id {installation_id}");
 
+    Some(installation_id)
+}
+
+pub async fn get_installation_access_token(state: &AppState, installation_id: u64) -> String {
     // get access token of installation
     let res = state
         .reqwest
