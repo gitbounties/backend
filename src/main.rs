@@ -7,7 +7,7 @@ use axum::{
     Extension, Router,
 };
 use axum_login::{
-    axum_sessions::{async_session::MemoryStore as SessionMemoryStore, SessionLayer},
+    axum_sessions::{async_session::MemoryStore as SessionMemoryStore, SameSite, SessionLayer},
     memory_store::MemoryStore as AuthMemoryStore,
     secrecy::SecretVec,
     AuthLayer, RequireAuthorizationLayer,
@@ -74,7 +74,9 @@ async fn main() {
     let secret = rand::thread_rng().gen::<[u8; 64]>();
 
     let session_store = SessionMemoryStore::new();
-    let session_layer = SessionLayer::new(session_store, &secret).with_secure(false);
+    let session_layer = SessionLayer::new(session_store, &secret)
+        .with_secure(true)
+        .with_same_site_policy(SameSite::None);
 
     use tokio::sync::RwLock;
     let store: Arc<RwLock<HashMap<String, AuthUser>>> = Arc::new(RwLock::new(HashMap::default()));

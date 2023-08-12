@@ -15,9 +15,10 @@ use crate::{
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/", post(create))
-        .route_layer(MyRequireAuthorizationLayer::login())
+    Router::new().route(
+        "/",
+        post(create).layer(MyRequireAuthorizationLayer::login()),
+    )
 }
 
 #[derive(Debug, Deserialize)]

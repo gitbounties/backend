@@ -144,6 +144,7 @@ pub struct DummyLoginBody {
 }
 /// Login system used for testing
 async fn dummy_login(mut auth: MyAuthContext, Json(payload): Json<DummyLoginBody>) {
+    debug!("dummy login for {}", payload.username);
     auth.login(&AuthUser {
         id: String::from(payload.username),
     })
