@@ -11,7 +11,7 @@ use axum_login::{
     axum_sessions::{async_session::MemoryStore as SessionMemoryStore, SameSite, SessionLayer},
     memory_store::MemoryStore as AuthMemoryStore,
     secrecy::SecretVec,
-    AuthLayer, RequireAuthorizationLayer,
+    AuthLayer, AuthUser, RequireAuthorizationLayer,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use db::DBConnection;
@@ -20,8 +20,8 @@ use rand::Rng;
 use reqwest::header;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use session_auth::AuthUser;
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tracing::Level;
 
 mod api;
 mod contract;
@@ -63,26 +63,32 @@ impl AppState {
 
 #[tokio::main]
 async fn main() {
-    env_logger::builder().format_timestamp(None).init();
+    //env_logger::builder().format_timestamp(None).init();
+
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
 
     dotenvy::dotenv().unwrap();
 
     let app_state = AppState::init().await;
-
-    // let pool = SqlitePoolOptions::new()
-    //     .connect("sqlite:auth.db")
-    //     .await
-    //     .expect("Could not make pool.");
 
     let secret = rand::thread_rng().gen::<[u8; 64]>();
 
     let session_store = SessionMemoryStore::new();
     let session_layer = SessionLayer::new(session_store, &secret)
         .with_secure(true)
+        .with_http_only(false)
         .with_same_site_policy(SameSite::None);
 
     use tokio::sync::RwLock;
-    let store: Arc<RwLock<HashMap<String, AuthUser>>> = Arc::new(RwLock::new(HashMap::default()));
+    let store: Arc<RwLock<HashMap<String, session_auth::AuthUser>>> =
+        Arc::new(RwLock::new(HashMap::default()));
+
+    let dummy_user = session_auth::AuthUser {
+        id: String::from("pinosaur"),
+    };
+    store.write().await.insert(dummy_user.get_id(), dummy_user);
 
     let user_store = AuthMemoryStore::new(&store);
     let auth_layer = AuthLayer::new(user_store, &secret);
@@ -94,10 +100,9 @@ async fn main() {
         .allow_credentials(true);
 
     let app = Router::new()
-        .route("/protected", get(protected))
-        .route_layer(RequireAuthorizationLayer::<String, AuthUser>::login())
         .nest("/", api::router())
         .with_state(app_state)
+        .layer(TraceLayer::new_for_http())
         .layer(cors)
         .layer(auth_layer)
         .layer(session_layer);
@@ -119,8 +124,4 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
-}
-
-async fn protected(Extension(user): Extension<AuthUser>) {
-    debug!("protected route with {}", user.id);
 }

@@ -14,7 +14,7 @@ build = "build.rs"
 axum = { version = "0.6", features = ["query"] }
 axum-server = { version = "0.5", features = ["tls-rustls"] }
 axum-login = { version = "0.5" }
-tower-http = { version = "0.4", features = ["cors"]}
+tower-http = { version = "0.4", features = ["cors", "trace"]}
 tokio = { version = "1.0", default-features = false, features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0" }
@@ -28,6 +28,8 @@ dotenvy = { version = "0.15" }
 
 anyhow = { version = "1" }
 env_logger = { version = "0.9" }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3" }
 log = { version = "0.4" }
 rand = { version = "0.8", features = ["min_const_gen"] }
 

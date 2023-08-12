@@ -1,6 +1,6 @@
 use axum::{
     extract::{Json, Path, Query, State},
-    response::Html,
+    response::{Html, IntoResponse},
     routing::{get, post},
     Extension, Router,
 };
@@ -34,11 +34,12 @@ pub struct CreateBody {
 pub async fn create(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,
-    Json(payload): Json<CreateBody>,
-) {
+    // Json(payload): Json<CreateBody>,
+) -> impl IntoResponse {
     // NOTE shoud we check that the user is owner of the issue to monetize it?
 
-    debug!("user info {}", user.id);
+    format!("Logged in as: {}", user.id)
+    /*
     //debug!("jwt {}", state.github_jwt);
 
     // auth process as referenced here
@@ -95,4 +96,5 @@ pub async fn create(
     // generate smart contract
 
     // Send notification on the original issue to mark it as a bounty
+    */
 }
