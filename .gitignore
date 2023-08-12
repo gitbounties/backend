@@ -4,3 +4,4 @@ abi
 .env
 *.swp
 *.~undo-tree~
+certs

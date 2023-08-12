@@ -15,6 +15,7 @@ Some tools that will be used
 - [foundry](https://github.com/foundry-rs/foundry): ethereum testing suite
 - [solc](#): Compiler for solidity
 - [surrealdb](): used to run repl to surrealdb docker container
+- [mkcert](): used to generate self signed certificates
 
 You will also need a metamask account to do local testing of the smart contract
 
@@ -23,6 +24,11 @@ You will also need a metamask account to do local testing of the smart contract
 Install git hooks for developers:
 ```
 just devsetup
+```
+
+Generate self signed certifcates
+```
+just certs
 ```
 
 Create your own copy of env file and fill out the variables with the secrets

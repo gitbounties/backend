@@ -12,6 +12,7 @@ build = "build.rs"
 
 [dependencies]
 axum = { version = "0.6", features = ["query"] }
+axum-server = { version = "0.5", features = ["tls-rustls"] }
 axum-login = { version = "0.5" }
 tower-http = { version = "0.4", features = ["cors"]}
 tokio = { version = "1.0", default-features = false, features = ["macros", "rt-multi-thread"] }

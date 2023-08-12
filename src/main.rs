@@ -1,7 +1,8 @@
-use std::{collections::HashMap, env, sync::Arc};
+use std::{collections::HashMap, env, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use axum::{
     extract::{Json, Path, Query, State},
+    http::HeaderValue,
     response::Html,
     routing::{get, post},
     Extension, Router,
@@ -12,9 +13,11 @@ use axum_login::{
     secrecy::SecretVec,
     AuthLayer, RequireAuthorizationLayer,
 };
+use axum_server::tls_rustls::RustlsConfig;
 use db::DBConnection;
 use log::{debug, info, warn};
 use rand::Rng;
+use reqwest::header;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use session_auth::AuthUser;
@@ -84,17 +87,35 @@ async fn main() {
     let user_store = AuthMemoryStore::new(&store);
     let auth_layer = AuthLayer::new(user_store, &secret);
 
+    let cors = CorsLayer::new()
+        .allow_origin("http://gitbounties.io:3000".parse::<HeaderValue>().unwrap())
+        .allow_headers([header::AUTHORIZATION, header::ACCEPT, header::CONTENT_TYPE])
+        // .allow_methods(tower_http::cors::Any)
+        .allow_credentials(true);
+
     let app = Router::new()
         .route("/protected", get(protected))
         .route_layer(RequireAuthorizationLayer::<String, AuthUser>::login())
         .nest("/", api::router())
         .with_state(app_state)
-        .layer(CorsLayer::permissive())
+        .layer(cors)
         .layer(auth_layer)
         .layer(session_layer);
 
     // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3001".parse().unwrap())
+    let rustls_config = RustlsConfig::from_pem_file(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("certs")
+            .join("cert.pem"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("certs")
+            .join("key.pem"),
+    )
+    .await
+    .unwrap();
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    axum_server::bind_rustls(addr, rustls_config)
         .serve(app.into_make_service())
         .await
         .unwrap();

@@ -21,3 +21,6 @@ db_repl:
 
 redis:
     docker run --rm -p 6379:6379 redis
+
+certs:
+    ./dev/scripts/certs
