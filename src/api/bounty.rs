@@ -16,10 +16,12 @@ use crate::{
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new().route(
-        "/",
-        post(create).layer(MyRequireAuthorizationLayer::login()),
-    )
+    Router::new()
+        .route(
+            "/",
+            post(create).layer(MyRequireAuthorizationLayer::login()),
+        )
+        .route("/", get(list).layer(MyRequireAuthorizationLayer::login()))
 }
 
 #[derive(Debug, Deserialize)]
@@ -133,7 +135,7 @@ pub async fn create(
 pub async fn list(
     State(state): State<AppState>,
     Extension(auth_user): Extension<AuthUser>,
-) -> (StatusCode, String) {
+) -> Json<Vec<Bounty>> {
     let mut res = state
         .db_conn
         .query("SELECT * FROM Bounty WHERE user == $user")
@@ -145,5 +147,5 @@ pub async fn list(
 
     debug!("user bounties {:?}", bounties);
 
-    (StatusCode::OK, "Ok".into())
+    Json(bounties)
 }
