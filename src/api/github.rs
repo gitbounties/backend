@@ -18,7 +18,7 @@ use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
 use crate::{
     db::DBConnection,
-    models::User,
+    models::{Bounty, Issue, User},
     session_auth::{AuthUser, MyAuthContext},
     AppState,
 };
@@ -72,22 +72,34 @@ async fn github_webhook(State(state): State<AppState>, Json(payload): Json<serde
 
 pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json::Value) {
     // Check to see if issue has an associated bounty, retrieve owner, repo and issue_id
+    let html_url = payload["html_url"].as_str().expect("Couldn't get html url");
+    let issue = parse_github_url(html_url);
+
     debug!("issue raw {:?}", payload);
 
-    let owner = "gitbounties";
-    let repo = "sample_repo";
-    let issue_id = 3;
-    let installation_id = get_installation(&state, &owner, &repo).await.unwrap();
+    let installation_id = get_installation(&state, &issue.owner, &issue.repo)
+        .await
+        .unwrap();
     let installation_access_token = get_installation_access_token(&state, installation_id).await;
 
-    // TODO Double check that an issue (not PR) is being closed
+    // Check if issue has a bounty open (and that it's not closed)
+    let mut res = state
+        .db_conn
+        .query("SELECT * FROM Bounty WHERE issue == $issue AND status = 'Open")
+        .bind(("issue", &issue))
+        .await
+        .unwrap();
+
+    debug!("issue res {:?}", res);
+    let Ok(bounty) = res.take::<Option<Bounty>>(0) else { debug!("Could not find associated bounty"); return; };
 
     // Find the PR that closed this issue
     // TODO find a nicer way to write graphql queries in rust
     let query = format!(
-        r#" {{ repository(name: \"{repo}\", owner: \"{owner}\") {{ issue(number: {issue_id}) {{ timelineItems(itemTypes: CLOSED_EVENT, last: 1) {{ nodes {{ ... on ClosedEvent {{ createdAt closer {{ __typename ... on PullRequest {{ author {{ login }} }} }} }} }} }} }} }} }} "#
+        r#" {{ repository(name: \"{}\", owner: \"{}\") {{ issue(number: {}) {{ timelineItems(itemTypes: CLOSED_EVENT, last: 1) {{ nodes {{ ... on ClosedEvent {{ createdAt closer {{ __typename ... on PullRequest {{ author {{ login }} }} }} }} }} }} }} }} }} "#,
+        issue.owner, issue.repo, issue.issue_id
     );
-    println!("{query}");
+
     let res = state
         .reqwest
         .post("https://api.github.com/graphql")
@@ -100,12 +112,46 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
         .await
         .unwrap();
 
-    // let body = res.json::<serde_json::Value>().await.unwrap();
-    let body = res.text().await.unwrap();
+    let body = res.json::<serde_json::Value>().await.unwrap();
+    //let body = res.text().await.unwrap();
+
+    debug!("timeline res {:?}", body);
 
     // Find the user the closed this issue and transfer them the funds
+    let timeline_nodes = body["data"]["repository"]["issue"]["timeLineItems"]["nodes"]
+        .as_array()
+        .expect("Couldn't get timeline nodes");
+    let closer = &timeline_nodes.get(0).unwrap()["closer"]; // TODO should this be first node or last
+
+    let closer_type = closer["__typename"]
+        .as_str()
+        .expect("Couldn't get closer type");
+    let closer_user = closer["author"]["login"]
+        .as_str()
+        .expect("Couldn't get closer user");
+    if closer_type != "PullRequest" {
+        debug!("Issue was not closed by pull request");
+        return;
+    }
+
+    debug!("Got closer user {closer_user}");
 
     println!("[webhook] issue closed {body}");
+}
+
+/// Parses github url to fetch issue info
+fn parse_github_url(url: &str) -> Issue {
+    use regex::Regex;
+    // TODO tiny bit sus method of parsing the html url to get info
+    // TODO could cache using lazy static
+    let re = Regex::new(r#"https://github.com/(?<owner>.)/(?<repo>.)/issues/()?<issue>."#).unwrap();
+    let caps = re.captures(url).unwrap();
+
+    Issue {
+        owner: caps["owner"].into(),
+        repo: caps["repo"].into(),
+        issue_id: caps["issue"].parse::<usize>().unwrap(),
+    }
 }
 
 async fn github_callback(

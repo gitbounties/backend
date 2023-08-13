@@ -52,12 +52,7 @@ pub async fn create(
     // https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation
 
     // get the installation id
-    let installation_id =
-        if let Some(id) = get_installation(&state, &query.owner, &query.repo).await {
-            id
-        } else {
-            return (StatusCode::NOT_FOUND, "Invalid issue".into());
-        };
+    let Some(installation_id) = get_installation(&state, &query.owner, &query.repo).await else { return (StatusCode::NOT_FOUND, "Invalid issue".into()); };
     let installation_access_token = get_installation_access_token(&state, installation_id).await;
 
     // Check if user has permission to manage this installation

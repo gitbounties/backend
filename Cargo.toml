@@ -27,6 +27,7 @@ clap = { version = "4", features = ["derive"] }
 
 dotenvy = { version = "0.15" }
 
+regex = { version = "1.9" }
 anyhow = { version = "1" }
 env_logger = { version = "0.9" }
 tracing = { version = "0.1" }
