@@ -14,6 +14,7 @@ use axum_login::{
     AuthLayer, AuthUser, RequireAuthorizationLayer,
 };
 use axum_server::tls_rustls::RustlsConfig;
+use clap::Parser;
 use db::DBConnection;
 use log::{debug, info, warn};
 use rand::Rng;
@@ -64,9 +65,21 @@ impl AppState {
     }
 }
 
+#[derive(Parser, Debug)]
+#[command(name = "gitbounties")]
+#[command(bin_name = "gitbounties")]
+#[command(author, version, about, long_about = None)]
+pub struct Cli {
+    /// Flag to disable HTTPS
+    #[arg(long)]
+    no_https: bool,
+}
+
 #[tokio::main]
 async fn main() {
     env_logger::builder().format_timestamp(None).init();
+
+    let cli = Cli::parse();
 
     // tracing_subscriber::fmt()
     //     .with_max_level(tracing::Level::DEBUG)
@@ -110,21 +123,32 @@ async fn main() {
         .layer(auth_layer)
         .layer(session_layer);
 
-    // run it with hyper on localhost:3000
-    let rustls_config = RustlsConfig::from_pem_file(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("certs")
-            .join("cert.pem"),
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("certs")
-            .join("key.pem"),
-    )
-    .await
-    .unwrap();
-
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
-    axum_server::bind_rustls(addr, rustls_config)
-        .serve(app.into_make_service())
+    if cli.no_https {
+        info!("Starting server with HTTPS disabled...");
+
+        axum_server::bind(addr)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    } else {
+        info!("Starting server with HTTPS...");
+
+        // run it with hyper on localhost:3000
+        let rustls_config = RustlsConfig::from_pem_file(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("certs")
+                .join("cert.pem"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("certs")
+                .join("key.pem"),
+        )
         .await
         .unwrap();
+
+        axum_server::bind_rustls(addr, rustls_config)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    }
 }

@@ -4,6 +4,9 @@ default: debug
 debug:
     RUST_LOG=gitbounties_backend,info cargo run
 
+debug-http:
+    RUST_LOG=gitbounties_backend,info cargo run -- --no-https
+
 devsetup:
     cp dev/hooks/* .git/hooks
 

@@ -23,6 +23,7 @@ reqwest = { version = "0.11", features = ["json"] }
 # ethers = { version = "2.0", default-features = false, features = ["ethers-solc"] }
 jsonwebtoken = { version = "8" }
 scrypt = { version = "0.11" }
+clap = { version = "4", features = ["derive"] }
 
 dotenvy = { version = "0.15" }
 
