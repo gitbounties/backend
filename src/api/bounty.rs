@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 use super::github::{get_installation, get_installation_access_token};
 use crate::{
-    models::{Bounty, Issue, User},
+    models::{Bounty, BountyStatus, Issue, User},
     session_auth::{AuthUser, MyRequireAuthorizationLayer},
     AppState,
 };
@@ -115,6 +115,7 @@ pub async fn create(
         .content(Bounty {
             user: auth_user.id,
             reward: payload.reward,
+            status: BountyStatus::Open,
             issue: Issue {
                 owner: query.owner.clone(),
                 repo: query.repo.clone(),

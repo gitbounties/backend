@@ -60,7 +60,9 @@ async fn github_webhook(State(state): State<AppState>, Json(payload): Json<serde
             debug!("[webhook] issue opened {issue_raw}");
         },
         "closed" => {
-            issue_closed_webhook(&state).await;
+            let issue_raw: &serde_json::Value = payload.get("issue").expect("No issue field");
+
+            issue_closed_webhook(&state, issue_raw).await;
         },
         _ => {
             warn!("Unhandled action type {}", action);
@@ -68,8 +70,10 @@ async fn github_webhook(State(state): State<AppState>, Json(payload): Json<serde
     }
 }
 
-pub(crate) async fn issue_closed_webhook(state: &AppState) {
+pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json::Value) {
     // Check to see if issue has an associated bounty, retrieve owner, repo and issue_id
+    debug!("issue raw {:?}", payload);
+
     let owner = "gitbounties";
     let repo = "sample_repo";
     let issue_id = 3;
@@ -139,20 +143,6 @@ async fn github_callback(
     .unwrap();
 }
 
-#[derive(Debug, Deserialize)]
-pub struct DummyLoginBody {
-    pub username: String,
-}
-/// Login system used for testing
-async fn dummy_login(mut auth: MyAuthContext, Json(payload): Json<DummyLoginBody>) {
-    debug!("dummy login for {}", payload.username);
-    auth.login(&AuthUser {
-        id: String::from(payload.username),
-    })
-    .await
-    .unwrap();
-}
-
 async fn register_user(state: &AppState, username: &str, access_token: &str) {
     // find installations the user has access to
     let res = state
@@ -193,6 +183,20 @@ async fn register_user(state: &AppState, username: &str, access_token: &str) {
 }
 
 async fn login_user() {}
+
+#[derive(Debug, Deserialize)]
+pub struct DummyLoginBody {
+    pub username: String,
+}
+/// Login system used for testing
+async fn dummy_login(mut auth: MyAuthContext, Json(payload): Json<DummyLoginBody>) {
+    debug!("dummy login for {}", payload.username);
+    auth.login(&AuthUser {
+        id: String::from(payload.username),
+    })
+    .await
+    .unwrap();
+}
 
 /// Exchange code recieved from github callback for a github access token
 async fn get_user_access_token(reqwest: &reqwest::Client, code: &str) -> reqwest::Result<String> {

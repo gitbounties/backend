@@ -19,6 +19,13 @@ pub struct Issue {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum BountyStatus {
+    Open,
+    Completed,
+    Closed,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Bounty {
     /// The user that owns this bounty
     pub user: String,
@@ -26,4 +33,6 @@ pub struct Bounty {
     pub reward: u64,
     /// github node_id of the original issue
     pub issue: Issue,
+    /// The current status of the bounty
+    pub status: BountyStatus,
 }
