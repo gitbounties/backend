@@ -28,7 +28,7 @@ jobs:
         run: |
           cargo build --release --target x86_64-unknown-linux-gnu
       - name: Upload binary to release
-        uses: svenstaro/upload-release-action@v3
+        uses: svenstaro/upload-release-action@v2
         with:
           release_name: nightly build ${{ github.sha }}
           prerelease: true
