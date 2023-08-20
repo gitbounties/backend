@@ -14,8 +14,8 @@ Some tools that will be used
 - [just](https://github.com/casey/just): used as command runner
 - [foundry](https://github.com/foundry-rs/foundry): ethereum testing suite
 - [solc](#): Compiler for solidity
-- [surrealdb](): used to run repl to surrealdb docker container
-- [mkcert](): used to generate self signed certificates
+- [surrealdb](https://surrealdb.com/install): used to run repl to surrealdb docker container
+- [mkcert](https://github.com/FiloSottile/mkcert): used to generate self signed certificates
 
 You will also need a metamask account to do local testing of the smart contract
 

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::{Json, Path, Query, State},
     response::{Html, IntoResponse},
@@ -130,14 +132,24 @@ pub async fn create(
 /// Get all created bounties for user
 pub async fn list(
     State(state): State<AppState>,
+    Query(params): Query<HashMap<String, String>>,
     Extension(auth_user): Extension<AuthUser>,
 ) -> Json<Vec<Bounty>> {
-    let mut res = state
-        .db_conn
-        .query("SELECT * FROM Bounty WHERE user == $user")
-        .bind(("user", auth_user.id))
-        .await
-        .unwrap();
+    let mut res = if params.get("user") == Some(&String::from("true")) {
+        state
+            .db_conn
+            .query("SELECT * FROM Bounty WHERE user == $user")
+            .bind(("user", auth_user.id))
+            .await
+            .unwrap()
+    } else {
+        state
+            .db_conn
+            .query("SELECT * FROM Bounty")
+            .bind(("user", auth_user.id))
+            .await
+            .unwrap()
+    };
 
     let bounties: Vec<Bounty> = res.take(0).unwrap();
 

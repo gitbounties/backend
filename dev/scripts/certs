@@ -1,0 +1,4 @@
+#!/bin/sh
+
+mkdir -p certs
+mkcert -key-file certs/key.pem -cert-file certs/cert.pem gitbounties.io
