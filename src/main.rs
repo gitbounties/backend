@@ -105,7 +105,9 @@ async fn main() {
     //     .with_max_level(tracing::Level::DEBUG)
     //     .init();
 
-    dotenvy::dotenv().expect("Error reading .env file");
+    if dotenvy::dotenv().is_err() {
+        warn!("Error reading .env file");
+    }
 
     let app_state = AppState::init().await;
 
