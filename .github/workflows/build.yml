@@ -19,7 +19,9 @@ jobs:
           override: true
       - name: download solc
         run: |
-          apt-get install solc
+          sudo add-apt-repository ppa:ethereum/ethereum
+          sudo apt-get update
+          sudo apt-get install solc
       - name: Build
         run: |
           cargo build --release --target x86_64-unknown-linux-gnu
