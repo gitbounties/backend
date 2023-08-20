@@ -12,6 +12,7 @@ use axum::{
 };
 use axum_login::{axum_sessions::async_session::MemoryStore, extractors::AuthContext};
 use log::{debug, error, info, warn};
+use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
 use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
@@ -101,12 +102,11 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
     );
 
     let res = state
-        .reqwest
-        .post("https://api.github.com/graphql")
-        .header("User-Agent", "GitBounties")
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .bearer_auth(installation_access_token)
+        .reqwest_github(
+            Method::POST,
+            "https://api.github.com/graphql",
+            &installation_access_token,
+        )
         .body(format!(r#"{{ "query": "{query}" }}"#))
         .send()
         .await
@@ -192,14 +192,11 @@ async fn github_callback(
 async fn register_user(state: &AppState, username: &str, access_token: &str) {
     // find installations the user has access to
     let res = state
-        .reqwest
-        // TODO not safe to simply do string format with user controlled input, should definitely santized payload first
-        .get(&format!("https://api.github.com/user/installations",))
-        // TODO move user agent to common static constant string
-        .header("User-Agent", "GitBounties")
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .bearer_auth(&access_token)
+        .reqwest_github(
+            Method::GET,
+            "https://api.github.com/user/installations",
+            &access_token,
+        )
         .send()
         .await
         .unwrap();
@@ -300,16 +297,11 @@ async fn get_user_profile(
 
 pub async fn get_installation(state: &AppState, owner: &str, repo: &str) -> Option<u64> {
     let res = state
-        .reqwest
-        // TODO not safe to simply do string format with user controlled input, should definitely santized payload first
-        .get(&format!(
-            "https://api.github.com/repos/{owner}/{repo}/installation",
-        ))
-        // TODO move user agent to common static constant string
-        .header("User-Agent", "GitBounties")
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .bearer_auth(&state.github_jwt)
+        .reqwest_github(
+            Method::GET,
+            &format!("https://api.github.com/repos/{owner}/{repo}/installation"),
+            &state.github_jwt,
+        )
         .send()
         .await
         .unwrap();
@@ -330,15 +322,14 @@ pub async fn get_installation(state: &AppState, owner: &str, repo: &str) -> Opti
 pub async fn get_installation_access_token(state: &AppState, installation_id: u64) -> String {
     // get access token of installation
     let res = state
-        .reqwest
-        .post(&format!(
-            "https://api.github.com/app/installations/{}/access_tokens",
-            installation_id
-        ))
-        .header("User-Agent", "GitBounties")
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .bearer_auth(&state.github_jwt)
+        .reqwest_github(
+            Method::POST,
+            &format!(
+                "https://api.github.com/app/installations/{}/access_tokens",
+                installation_id
+            ),
+            &state.github_jwt,
+        )
         .send()
         .await
         .unwrap();

@@ -7,7 +7,7 @@ use axum::{
     Extension, Router,
 };
 use log::debug;
-use reqwest::StatusCode;
+use reqwest::{Method, StatusCode};
 use serde::Deserialize;
 
 use super::github::{get_installation, get_installation_access_token};
@@ -81,15 +81,14 @@ pub async fn create(
 
     // fetch info about the issue
     let res = state
-        .reqwest
-        .get(&format!(
-            "https://api.github.com/repos/{}/{}/issues/{}",
-            query.owner, query.repo, query.issue
-        ))
-        .header("User-Agent", "GitBounties")
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .bearer_auth(installation_access_token)
+        .reqwest_github(
+            Method::GET,
+            &format!(
+                "https://api.github.com/repos/{}/{}/issues/{}",
+                query.owner, query.repo, query.issue
+            ),
+            &installation_access_token,
+        )
         .send()
         .await
         .unwrap();

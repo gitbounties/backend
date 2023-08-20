@@ -18,7 +18,7 @@ use clap::Parser;
 use db::DBConnection;
 use log::{debug, info, warn};
 use rand::Rng;
-use reqwest::header;
+use reqwest::{header, IntoUrl, RequestBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -45,9 +45,15 @@ pub struct AppState {
 
 impl AppState {
     pub async fn init() -> AppState {
-        let db_conn = db::connect("127.0.0.1:8000", "admin", "password", "test", "test")
-            .await
-            .unwrap();
+        let db_conn = db::connect(
+            &env::var("DB_URL").expect("Couldn't get DB_URL env var"),
+            &env::var("DB_USERNAME").expect("Couldn't get DB_USERNAME env var"),
+            &env::var("DB_PASSWORD").expect("Couldn't get DB_PASSWORD env var"),
+            &env::var("DB_NAMESPACE").expect("Couldn't get DB_NAMESPACE env var"),
+            &env::var("DB_DATABASE").expect("Couldn't get DB_DATABASE env var"),
+        )
+        .await
+        .unwrap();
 
         db::migrate(&db_conn).await;
 
@@ -62,6 +68,20 @@ impl AppState {
         };
 
         app_state
+    }
+
+    pub fn reqwest_github<U: IntoUrl>(
+        &self,
+        method: reqwest::Method,
+        url: U,
+        auth: &str,
+    ) -> RequestBuilder {
+        self.reqwest
+            .request(method, url)
+            .header("User-Agent", "GitBounties")
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .bearer_auth(auth)
     }
 }
 
@@ -110,8 +130,8 @@ async fn main() {
     let auth_layer = AuthLayer::new(user_store, &secret);
 
     let cors = CorsLayer::new()
-        .allow_origin("http://gitbounties.io:3000".parse::<HeaderValue>().unwrap())
         .allow_headers([header::AUTHORIZATION, header::ACCEPT, header::CONTENT_TYPE])
+        .allow_origin("http://gitbounties.io:3000".parse::<HeaderValue>().unwrap())
         // .allow_methods(tower_http::cors::Any)
         .allow_credentials(true);
 
