@@ -49,10 +49,11 @@ pub async fn list(
 
         // Fetch all issues from all repos in installation
         // TODO can all these calls be parallelized?
+        // TODO limited to only 100 repos (maybe imeplement pagination?)
         let res = state
             .reqwest_github(
                 Method::GET,
-                "https://api.github.com/installation/repositories",
+                "https://api.github.com/installation/repositories?per_page=100",
                 &installation_access_token,
             )
             .send()
@@ -61,12 +62,16 @@ pub async fn list(
 
         let body = res.json::<serde_json::Value>().await.unwrap();
 
-        for repository in body["repositories"].as_array().unwrap().iter() {
+        let repositories = body["repositories"].as_array().unwrap();
+
+        for repository in repositories.iter() {
             let repo_owner = repository["owner"]["login"].as_str().unwrap();
             let repo_name = repository["name"].as_str().unwrap();
 
+            //debug!("{repo_owner}/{repo_name}");
+
             let query = format!(
-                r#" {{ repository(owner:\"{}\", name:\"{}\") {{ issues(first:100, states:OPEN) {{ edges {{ node {{ author {{ login }} title body number labels(first: 10) {{ edges {{ node {{ name }} }} }} }} }} }} }} }} "#,
+                r#" {{ repository(owner:\"{}\", name:\"{}\") {{ issues(last:100, states:OPEN) {{ edges {{ node {{ author {{ login }} title body number labels(first: 10) {{ edges {{ node {{ name }} }} }} }} }} }} }} }} "#,
                 repo_owner, repo_name
             );
 
@@ -83,7 +88,7 @@ pub async fn list(
 
             let body = res.json::<serde_json::Value>().await.unwrap();
 
-            debug!("got issue {:?}", body);
+            //debug!("got issue {:?}", body);
 
             let issues_raw = body["data"]["repository"]["issues"]["edges"]
                 .as_array()
