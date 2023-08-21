@@ -107,7 +107,15 @@ async fn main() {
 
     if dotenvy::dotenv().is_err() {
         warn!("Error reading .env file");
+    } else {
+        debug!("Loaded env vars =-=-=-=");
+        for item in dotenvy::dotenv_iter().unwrap() {
+            let (key, val) = item.unwrap();
+            debug!("{}={}", key, val);
+        }
     }
+
+    //debug!("secret {}", env::var("CLIENT_PRIVATE_KEY").unwrap());
 
     let app_state = AppState::init().await;
 
