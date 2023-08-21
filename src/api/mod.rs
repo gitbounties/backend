@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod bounty;
 pub mod github;
+pub mod issue;
 
 use std::env;
 
@@ -22,6 +23,7 @@ pub fn router() -> Router<AppState> {
         .nest("/github", github::router())
         .nest("/bounty", bounty::router())
         .nest("/auth", auth::router())
+        .nest("/issue", issue::router())
 }
 
 async fn health() -> &'static str {
