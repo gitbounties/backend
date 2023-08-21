@@ -10,11 +10,11 @@ use ethers::{
 };
 
 pub fn main() {
-    compile_contract(
-        "Gitbounties",
-        &PathBuf::from("contracts/Gitbounties.sol"),
-        &PathBuf::from("abi/Gitbounties.json"),
-    );
+    // compile_contract(
+    //     "Gitbounties",
+    //     &PathBuf::from("contracts/Gitbounties.sol"),
+    //     &PathBuf::from("abi/Gitbounties.json"),
+    // );
 }
 
 pub fn compile_contract(contract_name: &str, contract_path: &Path, output_path: &Path) {

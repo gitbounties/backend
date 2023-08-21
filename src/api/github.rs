@@ -29,6 +29,7 @@ pub fn router() -> Router<AppState> {
         .route("/register", get(github_register))
         .route("/dummy/login", post(dummy_login))
         .route("/hook", post(github_webhook))
+        .route("/callback/install", get(github_callback_install))
         .route("/callback/register", get(github_callback_register))
         .route("/callback/login", get(github_callback_login))
     // // NOTE temp endpoint to get access tokens for testing
@@ -160,6 +161,41 @@ pub struct CodeQuery {
     code: String,
 }
 
+/// Callback when installing the github app
+async fn github_callback_install(
+    Query(params): Query<CodeQuery>,
+    mut auth: MyAuthContext,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else { return (StatusCode::FORBIDDEN, "invalid access token"); };
+
+    let profile = get_user_profile(&state.reqwest, &access_token)
+        .await
+        .unwrap();
+
+    let username = profile["login"].as_str().unwrap().to_string();
+
+    // register user if not in db
+    let res: Option<User> = state.db_conn.select(("Users", &username)).await.unwrap();
+
+    if res.is_none() {
+        // register user if not exist
+        register_user(&state, &username, &access_token).await;
+    } else {
+        // otherwise update installation
+        update_user_installations(&state, &username, &access_token).await;
+    }
+
+    auth.login(&AuthUser {
+        id: String::from(&username),
+    })
+    .await
+    .unwrap();
+
+    (StatusCode::OK, "ok")
+}
+
+/// Callback when registering from webapp
 async fn github_callback_register(
     Query(params): Query<CodeQuery>,
     mut auth: MyAuthContext,
@@ -190,6 +226,7 @@ async fn github_callback_register(
     (StatusCode::OK, "ok")
 }
 
+/// Callback when logging in
 async fn github_callback_login(
     Query(params): Query<CodeQuery>,
     mut auth: MyAuthContext,
@@ -220,7 +257,22 @@ async fn github_callback_login(
 }
 
 async fn register_user(state: &AppState, username: &str, access_token: &str) {
-    // find installations the user has access to
+    let res: User = state
+        .db_conn
+        .create(("Users", username))
+        .content(User {
+            username: username.to_string(),
+            github_installations: vec![],
+        })
+        .await
+        .unwrap();
+
+    debug!("registered user res {res:?}");
+
+    update_user_installations(state, username, access_token).await;
+}
+
+async fn update_user_installations(state: &AppState, username: &str, access_token: &str) {
     let res = state
         .reqwest_github(
             Method::GET,
@@ -242,17 +294,16 @@ async fn register_user(state: &AppState, username: &str, access_token: &str) {
         .map(|installation| installation["id"].as_u64().unwrap() as usize)
         .collect::<Vec<_>>();
 
-    let res: User = state
+    let res = state
         .db_conn
-        .create(("Users", username))
-        .content(User {
-            username: username.to_string(),
-            github_installations: installation_ids,
-        })
+        .query(format!(
+            "UPDATE Users:{username} SET github_installations = $installations"
+        ))
+        .bind(("installations", installation_ids))
         .await
         .unwrap();
 
-    debug!("registered user res {res:?}");
+    debug!("update user installation {res:?}");
 }
 
 async fn login_user() {}
