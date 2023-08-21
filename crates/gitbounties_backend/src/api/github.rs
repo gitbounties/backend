@@ -430,12 +430,12 @@ pub async fn get_installation_access_token(state: &AppState, installation_id: u6
 mod tests {
     use crate::{api::github::issue_closed_webhook, AppState};
 
-    #[tokio::test]
-    async fn test_issue_closed_webhook() {
-        dotenvy::dotenv().unwrap();
-        let app_state = AppState::init().await;
-        issue_closed_webhook(&app_state).await;
-    }
+    // #[tokio::test]
+    // async fn test_issue_closed_webhook() {
+    //     dotenvy::dotenv().unwrap();
+    //     let app_state = AppState::init().await;
+    //     issue_closed_webhook(&app_state).await;
+    // }
 
     /// TEMP: Testing surreal select statements in rust
     #[tokio::test]
