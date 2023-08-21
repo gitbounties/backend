@@ -12,7 +12,7 @@ use axum::{
 };
 use axum_login::{axum_sessions::async_session::MemoryStore, extractors::AuthContext};
 use log::{debug, error, info, warn};
-use reqwest::Method;
+use reqwest::{Method, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
 use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
@@ -29,7 +29,8 @@ pub fn router() -> Router<AppState> {
         .route("/register", get(github_register))
         .route("/dummy/login", post(dummy_login))
         .route("/hook", post(github_webhook))
-        .route("/callback", get(github_callback))
+        .route("/callback/register", get(github_callback_register))
+        .route("/callback/login", get(github_callback_login))
     // // NOTE temp endpoint to get access tokens for testing
     // .route("/access_token", get())
 }
@@ -154,16 +155,19 @@ fn parse_github_url(url: &str) -> Issue {
     }
 }
 
-async fn github_callback(
-    Query(params): Query<HashMap<String, String>>,
+#[derive(Debug, Deserialize)]
+pub struct CodeQuery {
+    code: String,
+}
+
+async fn github_callback_register(
+    Query(params): Query<CodeQuery>,
     mut auth: MyAuthContext,
     State(state): State<AppState>,
-) {
-    let code = params.get("code").expect("code not provided");
-
-    debug!("auth with github {:?}", params);
-
-    let access_token = get_user_access_token(&state.reqwest, code).await.unwrap();
+) -> StatusCode {
+    let access_token = get_user_access_token(&state.reqwest, &params.code)
+        .await
+        .unwrap();
 
     let profile = get_user_profile(&state.reqwest, &access_token)
         .await
@@ -174,19 +178,51 @@ async fn github_callback(
     // register user if not in db
     let res: Option<User> = state.db_conn.select(("Users", &username)).await.unwrap();
 
-    debug!("select res {:?}", res);
-    if let Some(user) = res {
-        debug!("Logging in user");
-        login_user().await;
-    } else {
-        debug!("Registering new user");
-        register_user(&state, &username, &access_token).await;
+    if res.is_some() {
+        warn!("Registering existing user");
+        return StatusCode::CONFLICT;
     }
+
+    register_user(&state, &username, &access_token).await;
     auth.login(&AuthUser {
         id: String::from(&username),
     })
     .await
     .unwrap();
+
+    StatusCode::OK
+}
+
+async fn github_callback_login(
+    Query(params): Query<CodeQuery>,
+    mut auth: MyAuthContext,
+    State(state): State<AppState>,
+) -> StatusCode {
+    let access_token = get_user_access_token(&state.reqwest, &params.code)
+        .await
+        .unwrap();
+
+    let profile = get_user_profile(&state.reqwest, &access_token)
+        .await
+        .unwrap();
+
+    let username = profile["login"].as_str().unwrap().to_string();
+
+    // Check if user has been registered
+    let res: Option<User> = state.db_conn.select(("Users", &username)).await.unwrap();
+
+    if res.is_none() {
+        warn!("User does not exist");
+        return StatusCode::NOT_FOUND;
+    }
+
+    auth.login(&AuthUser {
+        id: String::from(&username),
+    })
+    .await
+    .unwrap();
+
+    StatusCode::OK
 }
 
 async fn register_user(state: &AppState, username: &str, access_token: &str) {
@@ -260,6 +296,10 @@ async fn get_user_access_token(reqwest: &reqwest::Client, code: &str) -> reqwest
         .send()
         .await
         .unwrap();
+
+    if !res.status().is_success() {
+        // warn
+    }
 
     let body = res.json::<serde_json::Value>().await.unwrap();
 
