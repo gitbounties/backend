@@ -31,10 +31,9 @@ dotenvy = { version = "0.15" }
 regex = { version = "1.9" }
 anyhow = { version = "1" }
 env_logger = { version = "0.9" }
-tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.3" }
 log = { version = "0.4" }
 rand = { version = "0.8", features = ["min_const_gen"] }
+chrono = { version = "0.4", features = ["serde"]}
 
 [build-dependencies]
 ethers = { version = "2.0", default-features = false, features = ["ethers-solc"] }

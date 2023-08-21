@@ -22,7 +22,6 @@ use reqwest::{header, IntoUrl, RequestBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
-use tracing::Level;
 
 mod api;
 mod contract;
@@ -100,10 +99,6 @@ async fn main() {
     env_logger::builder().format_timestamp(None).init();
 
     let cli = Cli::parse();
-
-    // tracing_subscriber::fmt()
-    //     .with_max_level(tracing::Level::DEBUG)
-    //     .init();
 
     if dotenvy::dotenv().is_err() {
         warn!("Error reading .env file");

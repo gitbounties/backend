@@ -35,4 +35,9 @@ pub struct Bounty {
     pub issue: Issue,
     /// The current status of the bounty
     pub status: BountyStatus,
+    pub title: String,
+    pub description: String,
+    /// List of tags on the issue
+    pub labels: Vec<String>,
+    pub created: chrono::DateTime<chrono::offset::Utc>,
 }

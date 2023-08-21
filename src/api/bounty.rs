@@ -80,6 +80,7 @@ pub async fn create(
     }
 
     // fetch info about the issue
+    // TODO convert to graphql?
     let res = state
         .reqwest_github(
             Method::GET,
@@ -115,8 +116,17 @@ pub async fn create(
             issue: Issue {
                 owner: query.owner.clone(),
                 repo: query.repo.clone(),
-                issue_id: body["id"].as_u64().unwrap() as usize,
+                issue_id: body["number"].as_u64().unwrap() as usize,
             },
+            title: body["title"].as_str().unwrap().into(),
+            description: body["body"].as_str().unwrap().into(),
+            labels: body["labels"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|label| label["name"].as_str().unwrap().to_string())
+                .collect(),
+            created: chrono::offset::Utc::now(),
         })
         .await
         .unwrap();
@@ -142,12 +152,7 @@ pub async fn list(
             .await
             .unwrap()
     } else {
-        state
-            .db_conn
-            .query("SELECT * FROM Bounty")
-            .bind(("user", auth_user.id))
-            .await
-            .unwrap()
+        state.db_conn.query("SELECT * FROM Bounty").await.unwrap()
     };
 
     let bounties: Vec<Bounty> = res.take(0).unwrap();
