@@ -132,7 +132,7 @@ async fn main() {
         Arc::new(RwLock::new(HashMap::default()));
 
     let dummy_user = session_auth::AuthUser {
-        id: String::from("pinosaur"),
+        id: String::from("MrPicklePinosaur"),
     };
     store.write().await.insert(dummy_user.get_id(), dummy_user);
 

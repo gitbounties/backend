@@ -11,12 +11,12 @@ use serde::{Deserialize, Serialize};
 use super::github::get_installation_access_token;
 use crate::{
     models::{Issue, User},
-    session_auth::AuthUser,
+    session_auth::{AuthUser, MyRequireAuthorizationLayer},
     AppState,
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new()
+    Router::new().route("/", get(list).layer(MyRequireAuthorizationLayer::login()))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -25,6 +25,8 @@ pub struct GithubIssue {
     issue: Issue,
     title: String,
     description: String,
+    /// Who created the issue
+    author: String,
 }
 
 /// Return issues from github
@@ -38,6 +40,8 @@ pub async fn list(
         .select(("Users", &auth_user.id))
         .await
         .expect("User should exist in database");
+
+    let mut issues: Vec<GithubIssue> = vec![];
 
     for installation_id in user_data.github_installations.iter() {
         let installation_access_token =
@@ -62,33 +66,9 @@ pub async fn list(
             let repo_name = repository["name"].as_str().unwrap();
 
             let query = format!(
-                r#"
-              {{
-                repository(owner:\"{}\", name:\"{}\") {{
-                  issues(states:OPEN) {{
-                    edges {{
-                      node {{
-                        author {{
-                          login
-                        }}
-                        title
-                        body
-                        labels(first: 10) {{
-                          edges {{
-                            node {{
-                              name
-                            }}
-                          }}
-                        }}
-                      }}
-                    }}
-                  }}
-                }}
-              }}
-            "#,
+                r#" {{ repository(owner:\"{}\", name:\"{}\") {{ issues(first:100, states:OPEN) {{ edges {{ node {{ author {{ login }} title body number labels(first: 10) {{ edges {{ node {{ name }} }} }} }} }} }} }} }} "#,
                 repo_owner, repo_name
-            )
-            .replace("\\n", "");
+            );
 
             let res = state
                 .reqwest_github(
@@ -104,8 +84,32 @@ pub async fn list(
             let body = res.json::<serde_json::Value>().await.unwrap();
 
             debug!("got issue {:?}", body);
+
+            let issues_raw = body["data"]["repository"]["issues"]["edges"]
+                .as_array()
+                .unwrap();
+
+            for issue_raw in issues_raw.iter() {
+                let issue_raw = &issue_raw["node"];
+
+                let issue_id = issue_raw["number"].as_u64().unwrap();
+                let author = issue_raw["author"]["login"].as_str().unwrap();
+                let description = issue_raw["body"].as_str().unwrap();
+                let title = issue_raw["title"].as_str().unwrap();
+
+                issues.push(GithubIssue {
+                    issue: Issue {
+                        owner: repo_owner.into(),
+                        repo: repo_name.into(),
+                        issue_id: issue_id as usize,
+                    },
+                    title: title.into(),
+                    description: description.into(),
+                    author: author.into(),
+                });
+            }
         }
     }
 
-    Json(vec![])
+    Json(issues)
 }
