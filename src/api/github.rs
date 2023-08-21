@@ -6,7 +6,7 @@ use std::{collections::HashMap, env, sync::Arc};
 
 use axum::{
     extract::{Json, Path, Query, State},
-    response::Html,
+    response::{Html, IntoResponse},
     routing::{get, post, MethodRouter},
     Router,
 };
@@ -164,10 +164,8 @@ async fn github_callback_register(
     Query(params): Query<CodeQuery>,
     mut auth: MyAuthContext,
     State(state): State<AppState>,
-) -> StatusCode {
-    let access_token = get_user_access_token(&state.reqwest, &params.code)
-        .await
-        .unwrap();
+) -> impl IntoResponse {
+    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else { return (StatusCode::FORBIDDEN, "invalid access token"); };
 
     let profile = get_user_profile(&state.reqwest, &access_token)
         .await
@@ -179,8 +177,7 @@ async fn github_callback_register(
     let res: Option<User> = state.db_conn.select(("Users", &username)).await.unwrap();
 
     if res.is_some() {
-        warn!("Registering existing user");
-        return StatusCode::CONFLICT;
+        return (StatusCode::CONFLICT, "user already exists");
     }
 
     register_user(&state, &username, &access_token).await;
@@ -190,17 +187,15 @@ async fn github_callback_register(
     .await
     .unwrap();
 
-    StatusCode::OK
+    (StatusCode::OK, "ok")
 }
 
 async fn github_callback_login(
     Query(params): Query<CodeQuery>,
     mut auth: MyAuthContext,
     State(state): State<AppState>,
-) -> StatusCode {
-    let access_token = get_user_access_token(&state.reqwest, &params.code)
-        .await
-        .unwrap();
+) -> impl IntoResponse {
+    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else { return (StatusCode::FORBIDDEN, "invalid access token"); };
 
     let profile = get_user_profile(&state.reqwest, &access_token)
         .await
@@ -212,8 +207,7 @@ async fn github_callback_login(
     let res: Option<User> = state.db_conn.select(("Users", &username)).await.unwrap();
 
     if res.is_none() {
-        warn!("User does not exist");
-        return StatusCode::NOT_FOUND;
+        return (StatusCode::NOT_FOUND, "user does not exist");
     }
 
     auth.login(&AuthUser {
@@ -222,7 +216,7 @@ async fn github_callback_login(
     .await
     .unwrap();
 
-    StatusCode::OK
+    (StatusCode::OK, "ok")
 }
 
 async fn register_user(state: &AppState, username: &str, access_token: &str) {
@@ -278,7 +272,7 @@ async fn dummy_login(mut auth: MyAuthContext, Json(payload): Json<DummyLoginBody
 }
 
 /// Exchange code recieved from github callback for a github access token
-async fn get_user_access_token(reqwest: &reqwest::Client, code: &str) -> reqwest::Result<String> {
+async fn get_user_access_token(reqwest: &reqwest::Client, code: &str) -> Option<String> {
     let res = reqwest
         .post("https://github.com/login/oauth/access_token")
         .header("Accept", "application/json")
@@ -297,19 +291,16 @@ async fn get_user_access_token(reqwest: &reqwest::Client, code: &str) -> reqwest
         .await
         .unwrap();
 
-    if !res.status().is_success() {
-        // warn
-    }
-
     let body = res.json::<serde_json::Value>().await.unwrap();
 
-    info!("res {:?}", body);
-
-    let access_token = body["access_token"].as_str().unwrap();
+    let Some(access_token) = body["access_token"].as_str() else {
+        warn!("{:?}", body);
+        return None;
+    };
 
     debug!("Recieved access token {access_token}");
 
-    Ok(access_token.into())
+    Some(access_token.into())
 }
 
 // TODO technically not a route, should move somewhere else?
