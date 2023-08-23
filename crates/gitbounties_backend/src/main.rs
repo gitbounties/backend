@@ -160,11 +160,16 @@ async fn main() {
         info!("Starting server with HTTPS...");
 
         // run it with hyper on localhost:3000
+        // TODO not very nice how we need to reach out of the crates/ dir to get to workspace root
         let rustls_config = RustlsConfig::from_pem_file(
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("..")
+                .join("..")
                 .join("certs")
                 .join("cert.pem"),
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("..")
+                .join("..")
                 .join("certs")
                 .join("key.pem"),
         )
