@@ -74,7 +74,7 @@ async fn github_webhook(State(state): State<AppState>, Json(payload): Json<serde
     }
 }
 
-pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json::Value) {
+pub async fn issue_closed_webhook(state: &AppState, payload: &serde_json::Value) {
     // Check to see if issue has an associated bounty, retrieve owner, repo and issue_id
     let html_url = payload["html_url"].as_str().expect("Couldn't get html url");
     let issue = parse_github_url(html_url);
@@ -158,6 +158,14 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
     let token_id = bounty.token_id;
 
     // fetch closer wallet address
+    resolve_bounty(token_id, &closer_user_data.wallet_address).await;
+
+    // mark the issue as resolved
+
+    println!("[webhook] issue closed {body}");
+}
+
+pub(crate) async fn resolve_bounty(token_id: u64, closer_wallet_address: &Address) {
     let provider = http_provider();
     let contract_addr = env::var("CONTRACT_ADDRESS").expect("Couldnt get CONTRACT_ADDRESS env var");
     let wallet_private_key =
@@ -167,7 +175,7 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
         .expect("Coudln't initalize contract");
 
     let target_balance = provider
-        .get_balance(closer_user_data.wallet_address, None)
+        .get_balance(*closer_wallet_address, None)
         .await
         .unwrap();
     debug!(
@@ -176,7 +184,7 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
     );
 
     let _reciept = contract
-        .transfer_token(token_id.into(), closer_user_data.wallet_address)
+        .transfer_token(token_id.into(), *closer_wallet_address)
         .send()
         .await
         .unwrap()
@@ -192,14 +200,10 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
         .unwrap();
 
     let target_balance = provider
-        .get_balance(closer_user_data.wallet_address, None)
+        .get_balance(*closer_wallet_address, None)
         .await
         .unwrap();
     debug!("target wallet balance after transaction {}", target_balance);
-
-    // mark the issue as resolved
-
-    println!("[webhook] issue closed {body}");
 }
 
 /// Parses github url to fetch issue info
@@ -396,8 +400,6 @@ async fn update_user_installations(state: &AppState, username: &str, access_toke
     debug!("update user installation {res:?}");
 }
 
-async fn login_user() {}
-
 #[derive(Debug, Deserialize)]
 pub struct DummyLoginBody {
     pub username: String,
@@ -518,7 +520,12 @@ pub async fn get_installation_access_token(state: &AppState, installation_id: u6
 
 #[cfg(test)]
 mod tests {
-    use crate::{api::github::issue_closed_webhook, AppState};
+    use gitbounties_contract::H160;
+
+    use crate::{
+        api::github::{issue_closed_webhook, resolve_bounty},
+        AppState,
+    };
 
     // #[tokio::test]
     // async fn test_issue_closed_webhook() {
@@ -542,5 +549,16 @@ mod tests {
             .unwrap();
 
         println!("res {res:?}");
+    }
+
+    #[tokio::test]
+    async fn test_resolved_bounty() {
+        dotenvy::dotenv().unwrap();
+
+        let token_id = 1;
+        let closer_wallet_address: H160 = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+            .parse()
+            .unwrap();
+        resolve_bounty(token_id, &closer_wallet_address).await;
     }
 }

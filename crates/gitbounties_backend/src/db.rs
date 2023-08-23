@@ -5,7 +5,7 @@ use surrealdb::{
     Surreal,
 };
 
-use crate::models::User;
+use crate::models::{Bounty, BountyStatus, Issue, User};
 
 pub type DBConnection = Surreal<Client>;
 
@@ -32,19 +32,42 @@ pub async fn user_register() {}
 /// Initialize database
 pub async fn migrate(db_conn: &DBConnection) {
     // initalize with some dummy data
+}
 
-    /*
+pub async fn migrate_dummy(db_conn: &DBConnection) {
     let username = "MrPicklePinosaur";
     let installations: Vec<usize> = vec![40304727];
 
     // TODO lazy way to handle CREATE IF NOT EXIST: just ignore the error
-    let res: Result<User, surrealdb::Error> = db_conn
+    let _res: User = db_conn
         .create(("Users", username))
         .content(User {
             username: username.to_string(),
             github_installations: installations,
-            wallet_address:
+            wallet_address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+                .parse()
+                .unwrap(),
         })
-        .await;
-    */
+        .await
+        .unwrap();
+
+    let _res: Bounty = db_conn
+        .create("Bounty")
+        .content(Bounty {
+            user: "MrPicklePinosaur".into(),
+            reward: 1,
+            issue: Issue {
+                owner: "MrPicklePinosaur".into(),
+                repo: "testing".into(),
+                issue_id: 1,
+            },
+            status: BountyStatus::Open,
+            title: "My Test Issue".into(),
+            description: "description of my issue".into(),
+            labels: vec![],
+            created: chrono::offset::Utc::now(),
+            token_id: 1,
+        })
+        .await
+        .unwrap();
 }

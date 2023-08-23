@@ -54,7 +54,8 @@ impl AppState {
         .await
         .unwrap();
 
-        db::migrate(&db_conn).await;
+        // db::migrate(&db_conn).await;
+        // db::migrate_dummy(&db_conn).await;
 
         let reqwest = reqwest::Client::new();
         // TODO this jwt needs to be refreshed every so often
@@ -126,8 +127,13 @@ async fn main() {
     let store: Arc<RwLock<HashMap<String, session_auth::AuthUser>>> =
         Arc::new(RwLock::new(HashMap::default()));
 
+    // TODO not sure why need to do this
     let dummy_user = session_auth::AuthUser {
         id: String::from("MrPicklePinosaur"),
+    };
+    store.write().await.insert(dummy_user.get_id(), dummy_user);
+    let dummy_user = session_auth::AuthUser {
+        id: String::from("MrPicklePinosaur2"),
     };
     store.write().await.insert(dummy_user.get_id(), dummy_user);
 

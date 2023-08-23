@@ -120,7 +120,7 @@ pub async fn create(
                 issue_id: body["number"].as_u64().unwrap() as usize,
             },
             title: body["title"].as_str().unwrap().into(),
-            description: body["body"].as_str().unwrap().into(),
+            description: body["body"].as_str().unwrap().into(), // TODO body may not exist
             labels: body["labels"]
                 .as_array()
                 .unwrap()
