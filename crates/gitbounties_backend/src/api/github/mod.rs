@@ -95,7 +95,10 @@ pub async fn issue_closed_webhook(state: &AppState, payload: &serde_json::Value)
         .unwrap();
 
     debug!("issue res {:?}", res);
-    let Ok(Some(bounty)) = res.take::<Option<Bounty>>(0) else { debug!("Could not find associated bounty"); return; };
+    let Ok(Some(bounty)) = res.take::<Option<Bounty>>(0) else {
+        debug!("Could not find associated bounty");
+        return;
+    };
 
     if bounty.status != BountyStatus::Open {
         warn!(
@@ -238,7 +241,9 @@ async fn github_callback_install(
     mut auth: MyAuthContext,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else { return (StatusCode::FORBIDDEN, "invalid access token"); };
+    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else {
+        return (StatusCode::FORBIDDEN, "invalid access token");
+    };
 
     let profile = get_user_profile(&state.reqwest, &access_token)
         .await
@@ -282,7 +287,9 @@ async fn github_callback_register(
     mut auth: MyAuthContext,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else { return (StatusCode::FORBIDDEN, "invalid access token"); };
+    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else {
+        return (StatusCode::FORBIDDEN, "invalid access token");
+    };
 
     let profile = get_user_profile(&state.reqwest, &access_token)
         .await
@@ -320,7 +327,9 @@ async fn github_callback_login(
     mut auth: MyAuthContext,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else { return (StatusCode::FORBIDDEN, "invalid access token"); };
+    let Some(access_token) = get_user_access_token(&state.reqwest, &params.code).await else {
+        return (StatusCode::FORBIDDEN, "invalid access token");
+    };
 
     let profile = get_user_profile(&state.reqwest, &access_token)
         .await

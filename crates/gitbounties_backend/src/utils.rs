@@ -19,6 +19,9 @@ pub fn generate_github_jwt() -> String {
     use std::time::SystemTime;
 
     let private_key = std::env::var("CLIENT_PRIVATE_KEY").unwrap();
+
+    debug!("private key from env var {:?}", private_key);
+
     let private_key_bytes = general_purpose::STANDARD
         .decode(private_key)
         .expect("Failed base 64 decoding private key");
