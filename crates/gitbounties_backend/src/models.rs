@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub type Address = [u8; 20];
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     /// Username as associated with github (could potenitally decouple from github in future)
@@ -9,6 +11,9 @@ pub struct User {
     // pub hashed_pass: String,
     /// List of installations the user has permission to manage
     pub github_installations: Vec<usize>,
+
+    /// Public address of the user's wallet
+    pub wallet_address: Address,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

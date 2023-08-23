@@ -19,7 +19,7 @@ use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
 use crate::{
     db::DBConnection,
-    models::{Bounty, Issue, User},
+    models::{Address, Bounty, Issue, User},
     session_auth::{AuthUser, MyAuthContext},
     AppState,
 };
@@ -138,6 +138,8 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
 
     debug!("Got closer user {closer_user}");
 
+    // fetch closer wallet address
+
     println!("[webhook] issue closed {body}");
 }
 
@@ -157,13 +159,19 @@ fn parse_github_url(url: &str) -> Issue {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct RegisterQuery {
+    code: String,
+    wallet_address: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CodeQuery {
     code: String,
 }
 
 /// Callback when installing the github app
 async fn github_callback_install(
-    Query(params): Query<CodeQuery>,
+    Query(params): Query<RegisterQuery>,
     mut auth: MyAuthContext,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -180,7 +188,24 @@ async fn github_callback_install(
 
     if res.is_none() {
         // register user if not exist
-        register_user(&state, &username, &access_token).await;
+
+        // TODO do more validation on the wallet
+        let mut wallet_address = [0u8; 20];
+        if hex::decode_to_slice(
+            &params.wallet_address.trim_start_matches("0x"),
+            &mut wallet_address as &mut [u8],
+        )
+        .is_err()
+        {
+            warn!(
+                "failed to decode wallet_address {}",
+                &params.wallet_address.trim_start_matches("0x")
+            );
+            return (StatusCode::BAD_REQUEST, "invalid wallet address");
+        }
+        register_user(&state, &username, &access_token, &wallet_address).await;
+
+        // register_user(&state, &username, &access_token, &wallet_address).await;
     } else {
         // otherwise update installation
         update_user_installations(&state, &username, &access_token).await;
@@ -197,7 +222,7 @@ async fn github_callback_install(
 
 /// Callback when registering from webapp
 async fn github_callback_register(
-    Query(params): Query<CodeQuery>,
+    Query(params): Query<RegisterQuery>,
     mut auth: MyAuthContext,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -216,7 +241,20 @@ async fn github_callback_register(
         return (StatusCode::CONFLICT, "user already exists");
     }
 
-    register_user(&state, &username, &access_token).await;
+    let mut wallet_address = [0u8; 20];
+    if hex::decode_to_slice(
+        &params.wallet_address.trim_start_matches("0x"),
+        &mut wallet_address as &mut [u8],
+    )
+    .is_err()
+    {
+        warn!(
+            "failed to decode wallet_address {}",
+            &params.wallet_address.trim_start_matches("0x")
+        );
+        return (StatusCode::BAD_REQUEST, "invalid wallet address");
+    }
+    register_user(&state, &username, &access_token, &wallet_address).await;
     auth.login(&AuthUser {
         id: String::from(&username),
     })
@@ -256,13 +294,19 @@ async fn github_callback_login(
     (StatusCode::OK, "ok")
 }
 
-async fn register_user(state: &AppState, username: &str, access_token: &str) {
+async fn register_user(
+    state: &AppState,
+    username: &str,
+    access_token: &str,
+    wallet_address: &Address,
+) {
     let res: User = state
         .db_conn
         .create(("Users", username))
         .content(User {
             username: username.to_string(),
             github_installations: vec![],
+            wallet_address: *wallet_address,
         })
         .await
         .unwrap();

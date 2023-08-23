@@ -1912,6 +1912,7 @@ dependencies = [
  "clap",
  "dotenvy",
  "env_logger",
+ "hex",
  "jsonwebtoken",
  "log",
  "rand",

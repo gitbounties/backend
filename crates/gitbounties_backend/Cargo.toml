@@ -33,6 +33,7 @@ env_logger = { version = "0.9" }
 log = { version = "0.4" }
 rand = { version = "0.8", features = ["min_const_gen"] }
 chrono = { version = "0.4", features = ["serde"]}
+hex = { version = "0.4" }
 
 [target.x86_64-unknown-linux-gnu]
 linker = "/usr/bin/clang"
