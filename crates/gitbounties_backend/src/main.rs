@@ -154,7 +154,7 @@ async fn main() {
         .layer(auth_layer)
         .layer(session_layer);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
     if cli.no_https {
         info!("Starting server with HTTPS disabled...");
 

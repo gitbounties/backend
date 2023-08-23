@@ -8,7 +8,7 @@ debug-http:
     RUST_LOG=gitbounties_backend,info cargo run -- --no-https
 
 build:
-    cargo build --release --target x86_64-unknown-linux-gnu
+    cargo build
 
 devsetup:
     cp dev/hooks/* .git/hooks

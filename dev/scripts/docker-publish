@@ -1,6 +1,0 @@
-#!/bin/sh
-
-docker build -t gitbounties .
-docker tag gitbounties:latest pinosaur/gitbounties:latest
-docker push pinosaur/gitbounties:latest
-
