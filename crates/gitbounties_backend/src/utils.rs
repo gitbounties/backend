@@ -22,15 +22,6 @@ pub fn generate_github_jwt() -> String {
 
     debug!("private key from env var {:?}", private_key);
 
-    let private_key_bytes = general_purpose::STANDARD
-        .decode(private_key)
-        .expect("Failed base 64 decoding private key");
-
-    debug!(
-        "private key {:?}",
-        std::str::from_utf8(&private_key_bytes).unwrap()
-    );
-
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -46,7 +37,7 @@ pub fn generate_github_jwt() -> String {
     encode(
         &Header::new(Algorithm::RS256),
         &claims,
-        &EncodingKey::from_rsa_pem(&private_key_bytes).unwrap(),
+        &EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap(),
     )
     .expect("Failed encoding jwt token")
 }

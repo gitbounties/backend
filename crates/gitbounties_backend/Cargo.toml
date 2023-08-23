@@ -17,7 +17,7 @@ tower-http = { version = "0.4", features = ["cors", "trace"]}
 tokio = { version = "1.0", default-features = false, features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0" }
-surrealdb = { git = "https://github.com/surrealdb/surrealdb.git", branch = "main" }
+surrealdb = { git = "https://github.com/surrealdb/surrealdb.git", tag = "v1.0.0-beta.9+20230402" }
 reqwest = { version = "0.11", features = ["json"] }
 # ethers = { version = "2.0", default-features = false, features = ["ethers-solc"] }
 jsonwebtoken = { version = "8" }

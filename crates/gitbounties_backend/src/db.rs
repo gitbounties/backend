@@ -38,8 +38,9 @@ pub async fn migrate_dummy(db_conn: &DBConnection) {
     let username = "MrPicklePinosaur";
     let installations: Vec<usize> = vec![40304727];
 
+    /*
     // TODO lazy way to handle CREATE IF NOT EXIST: just ignore the error
-    let _res: User = db_conn
+    let _res: Option<User> = db_conn
         .create(("Users", username))
         .content(User {
             username: username.to_string(),
@@ -51,8 +52,8 @@ pub async fn migrate_dummy(db_conn: &DBConnection) {
         .await
         .unwrap();
 
-    let _res: Bounty = db_conn
-        .create("Bounty")
+    let _res: Option<Bounty> = db_conn
+        .create(("Bounty", ))
         .content(Bounty {
             user: "MrPicklePinosaur".into(),
             reward: 1,
@@ -70,4 +71,5 @@ pub async fn migrate_dummy(db_conn: &DBConnection) {
         })
         .await
         .unwrap();
+    */
 }
