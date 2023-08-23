@@ -1,6 +1,7 @@
+use gitbounties_contract::H160;
 use serde::{Deserialize, Serialize};
 
-pub type Address = [u8; 20];
+pub type Address = H160;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
@@ -23,7 +24,7 @@ pub struct Issue {
     pub issue_id: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum BountyStatus {
     Open,
     Completed,

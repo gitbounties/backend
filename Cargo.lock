@@ -1912,6 +1912,7 @@ dependencies = [
  "clap",
  "dotenvy",
  "env_logger",
+ "gitbounties_contract",
  "hex",
  "jsonwebtoken",
  "log",
@@ -1930,6 +1931,7 @@ dependencies = [
 name = "gitbounties_contract"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "ethers",
 ]
 

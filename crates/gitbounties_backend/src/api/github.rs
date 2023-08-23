@@ -11,6 +11,7 @@ use axum::{
     Router,
 };
 use axum_login::{axum_sessions::async_session::MemoryStore, extractors::AuthContext};
+use gitbounties_contract::{get_contract, parse_address};
 use log::{debug, error, info, warn};
 use reqwest::{Method, StatusCode};
 use serde::Deserialize;
@@ -19,7 +20,7 @@ use surrealdb::{engine::remote::ws::Ws, opt::auth::Root, sql::Thing, Surreal};
 
 use crate::{
     db::DBConnection,
-    models::{Address, Bounty, Issue, User},
+    models::{Address, Bounty, BountyStatus, Issue, User},
     session_auth::{AuthUser, MyAuthContext},
     AppState,
 };
@@ -94,7 +95,15 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
         .unwrap();
 
     debug!("issue res {:?}", res);
-    let Ok(bounty) = res.take::<Option<Bounty>>(0) else { debug!("Could not find associated bounty"); return; };
+    let Ok(Some(bounty)) = res.take::<Option<Bounty>>(0) else { debug!("Could not find associated bounty"); return; };
+
+    if bounty.status != BountyStatus::Open {
+        warn!(
+            "Bounty has already been closed {}/{}/{}",
+            bounty.issue.owner, bounty.issue.repo, bounty.issue.issue_id
+        );
+        return;
+    }
 
     // Find the PR that closed this issue
     // TODO find a nicer way to write graphql queries in rust
@@ -138,7 +147,31 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
 
     debug!("Got closer user {closer_user}");
 
+    // Get the closer users's public key
+    let closer_user_data: User = state
+        .db_conn
+        .select(("Users", closer_user))
+        .await
+        .expect("User should exist in database");
+
+    // Get the token id for the bounty
+    let token_id = bounty.token_id;
+
     // fetch closer wallet address
+    let contract_addr = env::var("CONTRACT_ADDRESS").expect("Couldnt get CONTRACT_ADDRESS env var");
+    let contract = get_contract(&contract_addr)
+        .await
+        .expect("Coudln't initalize contract");
+
+    let _reciept = contract
+        .transfer_token(token_id.into(), closer_user_data.wallet_address)
+        .send()
+        .await
+        .unwrap()
+        .await
+        .unwrap();
+
+    // mark the issue as resolved
 
     println!("[webhook] issue closed {body}");
 }
@@ -189,20 +222,13 @@ async fn github_callback_install(
     if res.is_none() {
         // register user if not exist
 
-        // TODO do more validation on the wallet
-        let mut wallet_address = [0u8; 20];
-        if hex::decode_to_slice(
-            &params.wallet_address.trim_start_matches("0x"),
-            &mut wallet_address as &mut [u8],
-        )
-        .is_err()
-        {
+        let Ok(wallet_address) = parse_address(&params.wallet_address) else {
             warn!(
                 "failed to decode wallet_address {}",
                 &params.wallet_address.trim_start_matches("0x")
             );
             return (StatusCode::BAD_REQUEST, "invalid wallet address");
-        }
+        };
         register_user(&state, &username, &access_token, &wallet_address).await;
 
         // register_user(&state, &username, &access_token, &wallet_address).await;
@@ -241,19 +267,13 @@ async fn github_callback_register(
         return (StatusCode::CONFLICT, "user already exists");
     }
 
-    let mut wallet_address = [0u8; 20];
-    if hex::decode_to_slice(
-        &params.wallet_address.trim_start_matches("0x"),
-        &mut wallet_address as &mut [u8],
-    )
-    .is_err()
-    {
+    let Ok(wallet_address) = parse_address(&params.wallet_address) else {
         warn!(
             "failed to decode wallet_address {}",
             &params.wallet_address.trim_start_matches("0x")
         );
         return (StatusCode::BAD_REQUEST, "invalid wallet address");
-    }
+    };
     register_user(&state, &username, &access_token, &wallet_address).await;
     auth.login(&AuthUser {
         id: String::from(&username),

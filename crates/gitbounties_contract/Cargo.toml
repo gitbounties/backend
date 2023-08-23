@@ -10,3 +10,5 @@ repository = "https://github.com/gitbounties/backend"
 [dependencies]
 ethers = { version = "2.0", default-features = false, features = ["ethers-solc"] }
 
+anyhow = { version = "1" }
+
