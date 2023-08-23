@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
-use ethers::{
+pub use ethers::{
     middleware::SignerMiddleware,
     prelude::{
         abigen,
         k256::{ecdsa::SigningKey, SecretKey},
         Abigen,
     },
-    providers::{Http, Provider},
+    providers::{Http, Middleware, Provider},
     signers::{LocalWallet, Signer, Wallet},
     solc::{Artifact, Project, ProjectPathsConfig},
-    types::{Address, Chain, U256},
+    types::{Address, Chain, NameOrAddress, H160, U256},
 };
 
 mod abi {
@@ -20,7 +20,6 @@ mod abi {
     abigen!(GitbountiesNFT, "./contract/GitbountiesNFT.json");
 }
 pub use abi::*;
-pub use ethers::types::H160;
 
 pub type Contract = GitbountiesNFT<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>;
 

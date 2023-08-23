@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 use axum_login::{axum_sessions::async_session::MemoryStore, extractors::AuthContext};
-use gitbounties_contract::{get_contract, http_provider, parse_address};
+use gitbounties_contract::{get_contract, http_provider, parse_address, Middleware};
 use log::{debug, error, info, warn};
 use reqwest::{Method, StatusCode};
 use serde::Deserialize;
@@ -166,6 +166,15 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
         .await
         .expect("Coudln't initalize contract");
 
+    let target_balance = provider
+        .get_balance(closer_user_data.wallet_address, None)
+        .await
+        .unwrap();
+    debug!(
+        "target wallet balance before transaction {}",
+        target_balance
+    );
+
     let _reciept = contract
         .transfer_token(token_id.into(), closer_user_data.wallet_address)
         .send()
@@ -173,6 +182,20 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
         .unwrap()
         .await
         .unwrap();
+
+    let _reciept = contract
+        .burn(token_id.into())
+        .send()
+        .await
+        .unwrap()
+        .await
+        .unwrap();
+
+    let target_balance = provider
+        .get_balance(closer_user_data.wallet_address, None)
+        .await
+        .unwrap();
+    debug!("target wallet balance after transaction {}", target_balance);
 
     // mark the issue as resolved
 
