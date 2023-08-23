@@ -53,7 +53,7 @@ pub async fn list(
         let res = state
             .reqwest_github(
                 Method::GET,
-                "https://api.github.com/installation/repositories?per_page=100",
+                "https://api.github.com/installation/repositories?per_page=10",
                 &installation_access_token,
             )
             .send()

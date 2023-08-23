@@ -40,4 +40,6 @@ pub struct Bounty {
     /// List of tags on the issue
     pub labels: Vec<String>,
     pub created: chrono::DateTime<chrono::offset::Utc>,
+    /// Token ID of the bounty NFT the user has created
+    pub token_id: u64,
 }

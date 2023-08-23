@@ -30,6 +30,7 @@ pub fn router() -> Router<AppState> {
 pub struct CreateBody {
     /// Value of the reward
     pub reward: u64,
+    pub token_id: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -127,6 +128,7 @@ pub async fn create(
                 .map(|label| label["name"].as_str().unwrap().to_string())
                 .collect(),
             created: chrono::offset::Utc::now(),
+            token_id: payload.token_id,
         })
         .await
         .unwrap();
