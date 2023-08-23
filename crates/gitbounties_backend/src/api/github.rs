@@ -11,7 +11,7 @@ use axum::{
     Router,
 };
 use axum_login::{axum_sessions::async_session::MemoryStore, extractors::AuthContext};
-use gitbounties_contract::{get_contract, parse_address};
+use gitbounties_contract::{get_contract, http_provider, parse_address};
 use log::{debug, error, info, warn};
 use reqwest::{Method, StatusCode};
 use serde::Deserialize;
@@ -158,8 +158,11 @@ pub(crate) async fn issue_closed_webhook(state: &AppState, payload: &serde_json:
     let token_id = bounty.token_id;
 
     // fetch closer wallet address
+    let provider = http_provider();
     let contract_addr = env::var("CONTRACT_ADDRESS").expect("Couldnt get CONTRACT_ADDRESS env var");
-    let contract = get_contract(&contract_addr)
+    let wallet_private_key =
+        env::var("WALLET_PRIVATE_KEY").expect("Couldnt get WALLET_PRIVATE_KEY env var");
+    let contract = get_contract(&provider, &contract_addr, &wallet_private_key)
         .await
         .expect("Coudln't initalize contract");
 

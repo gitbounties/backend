@@ -8,7 +8,9 @@ description = ""
 repository = "https://github.com/gitbounties/backend"
 
 [dependencies]
-ethers = { version = "2.0", default-features = false, features = ["ethers-solc"] }
+ethers = { version = "2.0",  features = ["abigen", "ethers-solc", "ws"] }
 
 anyhow = { version = "1" }
 
+[dev-dependencies]
+tokio = { version = "1.0", default-features = false, features = ["macros", "rt-multi-thread"] }
