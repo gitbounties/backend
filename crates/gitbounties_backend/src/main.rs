@@ -140,9 +140,15 @@ async fn main() {
     let user_store = AuthMemoryStore::new(&store);
     let auth_layer = AuthLayer::new(user_store, &secret);
 
+    let origins = [
+        "http://gitbounties.io:3000".parse().unwrap(),
+        "https://gitbounties.io:3000".parse().unwrap(),
+        "http://localhost:3000".parse().unwrap(),
+        "https://gitbounties.karatsubalabs.com".parse().unwrap(),
+    ];
     let cors = CorsLayer::new()
         .allow_headers([header::AUTHORIZATION, header::ACCEPT, header::CONTENT_TYPE])
-        .allow_origin("http://gitbounties.io:3000".parse::<HeaderValue>().unwrap())
+        .allow_origin(origins)
         // .allow_methods(tower_http::cors::Any)
         .allow_credentials(true);
 

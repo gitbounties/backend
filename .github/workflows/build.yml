@@ -3,9 +3,9 @@
 name: Build
 on:
   workflow_dispatch: {}
-  push:
-    branches:
-      - master
+  # push:
+  #   branches:
+  #     - master
 
 env:
   binary: gitbounties_backend
